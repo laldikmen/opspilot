@@ -1,0 +1,36 @@
+# Data and artifacts: never commit raw CSVs, the warehouse file or MLflow runs
+data/raw/*
+!data/raw/.gitkeep
+*.duckdb
+*.duckdb.wal
+mlruns/
+mlartifacts/
+mlflow.db
+
+# Secrets and local settings
+.env
+kaggle.json
+
+# dbt
+warehouse/target/
+warehouse/dbt_packages/
+warehouse/logs/
+warehouse/.user.yml
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Personal planning notes
+/OpsPilot AI*.pdf
+.claude/
