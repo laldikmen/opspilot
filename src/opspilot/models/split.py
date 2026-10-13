@@ -1,1 +1,1 @@
-"""Chronological train/validation/test split and expanding-window folds inside train."""
+"""Assign train/validation/test from the dates in config.py, plus expanding-window folds."""

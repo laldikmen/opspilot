@@ -1,1 +1,1 @@
-"""Probability calibration (isotonic or Platt), fitted on validation."""
+"""Calibration under shift: fitted on validation, on pooled out-of-fold predictions, or none."""
