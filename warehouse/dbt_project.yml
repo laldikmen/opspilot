@@ -1,1 +1,21 @@
-# dbt project config. Written in Week 2 (dbt init with dbt-duckdb).
+name: opspilot
+version: "1.0.0"
+config-version: 2
+profile: opspilot
+
+model-paths: ["models"]
+test-paths: ["tests"]
+clean-targets: ["target", "dbt_packages"]
+
+flags:
+  send_anonymous_usage_stats: false
+
+models:
+  opspilot:
+    staging:
+      # Tables, not views: the sources are CSV files, so parse and cast them once.
+      +materialized: table
+    intermediate:
+      +materialized: view
+    marts:
+      +materialized: table

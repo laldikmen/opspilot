@@ -1,1 +1,32 @@
-# The Olist CSVs registered as dbt sources. Written in Week 2.
+version: 2
+
+sources:
+  - name: olist
+    description: >
+      Brazilian E-Commerce Public Dataset by Olist (CC BY-NC-SA 4.0), read
+      straight from the CSV files: data/raw on the dev target, data/sample on
+      the ci target. Every column arrives as text and is cast in staging.
+      The reviews file is deliberately not registered: everything in it is
+      written after delivery (docs/decisions/0005-leakage-rules.md).
+    config:
+      meta:
+        external_location: >-
+          read_csv('../data/{{ 'sample' if target.name == 'ci' else 'raw' }}/{identifier}.csv',
+          header = true, all_varchar = true)
+    tables:
+      - name: orders
+        identifier: olist_orders_dataset
+      - name: order_items
+        identifier: olist_order_items_dataset
+      - name: customers
+        identifier: olist_customers_dataset
+      - name: sellers
+        identifier: olist_sellers_dataset
+      - name: products
+        identifier: olist_products_dataset
+      - name: payments
+        identifier: olist_order_payments_dataset
+      - name: geolocation
+        identifier: olist_geolocation_dataset
+      - name: category_translation
+        identifier: product_category_name_translation

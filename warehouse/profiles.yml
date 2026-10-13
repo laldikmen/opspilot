@@ -1,1 +1,16 @@
-# DuckDB targets: dev (data/raw) and ci (data/sample). Written in Week 2.
+# Run dbt from this folder (`make dbt` does): the database path here and the
+# CSV paths in models/staging/_sources.yml are relative to warehouse/.
+# No secrets: DuckDB is a local file.
+opspilot:
+  target: dev
+  outputs:
+    # Full data from data/raw (after `make data`).
+    dev:
+      type: duckdb
+      path: opspilot.duckdb
+      threads: 4
+    # The committed ~2k-order sample in data/sample. Used by CI.
+    ci:
+      type: duckdb
+      path: opspilot_ci.duckdb
+      threads: 4

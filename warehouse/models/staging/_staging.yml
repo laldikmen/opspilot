@@ -1,1 +1,127 @@
-# Column tests: unique, not_null, relationships, accepted_values. Written in Week 2.
+version: 2
+
+models:
+  - name: stg_orders
+    description: One row per order, with timestamps cast and renamed.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: customer_id
+        description: One per order in this dataset; the person is customer_unique_id.
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_customers')
+                field: customer_id
+      - name: order_status
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values:
+                  - delivered
+                  - shipped
+                  - canceled
+                  - unavailable
+                  - invoiced
+                  - processing
+                  - created
+                  - approved
+      - name: purchased_at
+        data_tests: [not_null]
+      - name: approved_at
+        description: Prediction time t0, falling back to purchased_at when null.
+      - name: carrier_handover_at
+        description: Recorded after t0. Forbidden as a feature.
+      - name: delivered_at
+        description: Recorded after t0. Used only to build the label.
+      - name: estimated_delivery_date
+        data_tests: [not_null]
+
+  - name: stg_order_items
+    description: One row per item in an order.
+    columns:
+      - name: order_item_key
+        description: order_id plus the item's position in the order.
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: product_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_products')
+                field: product_id
+      - name: seller_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_sellers')
+                field: seller_id
+      - name: price
+        data_tests: [not_null]
+      - name: freight_value
+        data_tests: [not_null]
+
+  - name: stg_customers
+    description: One row per customer_id (which is one per order).
+    columns:
+      - name: customer_id
+        data_tests: [unique, not_null]
+      - name: customer_zip_code_prefix
+        data_tests: [not_null]
+      - name: customer_state
+        data_tests: [not_null]
+
+  - name: stg_sellers
+    description: One row per seller.
+    columns:
+      - name: seller_id
+        data_tests: [unique, not_null]
+      - name: seller_zip_code_prefix
+        data_tests: [not_null]
+      - name: seller_state
+        data_tests: [not_null]
+
+  - name: stg_products
+    description: One row per product, with the English category name joined in.
+    columns:
+      - name: product_id
+        data_tests: [unique, not_null]
+      - name: category_name
+        description: Lowercase English category; null for products with no category.
+
+  - name: stg_payments
+    description: One row per payment; an order can be paid in several parts.
+    columns:
+      - name: payment_key
+        description: order_id plus the payment's sequence number.
+        data_tests: [unique, not_null]
+      - name: order_id
+        data_tests:
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('stg_orders')
+                field: order_id
+      - name: payment_type
+        data_tests: [not_null]
+
+  - name: stg_geolocation
+    description: Latitude/longitude points per zip prefix. No unique key.
+    columns:
+      - name: zip_code_prefix
+        data_tests: [not_null]
+      - name: latitude
+        data_tests: [not_null]
+      - name: longitude
+        data_tests: [not_null]

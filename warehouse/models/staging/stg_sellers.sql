@@ -1,3 +1,12 @@
--- stg_sellers: 1:1 cleaned source (renamed columns, cast timestamps, lowercase categories).
--- Placeholder (Week 2): delete the config line below when you write this model.
-{{ config(enabled=false) }}
+with source as (
+
+    select * from {{ source('olist', 'sellers') }}
+
+)
+
+select
+    seller_id,
+    seller_zip_code_prefix,
+    lower(trim(seller_city)) as seller_city,
+    upper(trim(seller_state)) as seller_state
+from source

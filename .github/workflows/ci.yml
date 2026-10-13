@@ -17,4 +17,5 @@ jobs:
       - run: uv run ruff check .
       - run: uv run ruff format --check .
       - run: uv run pytest
-      # Week 2 adds: uv run dbt build --target ci (on data/sample)
+      # Builds and tests the warehouse on the committed sample in data/sample.
+      - run: make dbt DBT_TARGET=ci
