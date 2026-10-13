@@ -1,1 +1,52 @@
-# Mart documentation and tests. Written in Week 3.
+version: 2
+
+models:
+  - name: fct_orders
+    description: >
+      One row per order with the label, the prediction time and the censoring
+      flag. The train/validation/test split is not stored here; split.py
+      assigns it from the dates in config.py.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: t0
+        description: Prediction time, approved_at falling back to purchased_at.
+        data_tests: [not_null]
+      - name: is_labeled
+        description: Delivered, with a delivery date.
+        data_tests: [not_null]
+      - name: is_late
+        description: 1 when delivered after the promised calendar date. Null when not labeled.
+        data_tests:
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+      - name: is_censored
+        description: Purchased after the censoring cutoff.
+        data_tests: [not_null]
+
+  - name: ml_late_delivery_features
+    description: >
+      The model input table. One row per labeled, uncensored order, with the
+      label, three identifying columns and 23 features known at t0.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: purchase_date
+        data_tests: [not_null]
+      - name: t0
+        data_tests: [not_null]
+      - name: is_late
+        data_tests:
+          - not_null
+          - accepted_values:
+              arguments:
+                values: [0, 1]
+      - name: promised_days
+        data_tests: [not_null]
+      - name: n_items
+        data_tests: [not_null]
+      - name: seller_past_delivered
+        data_tests: [not_null]
+      - name: seller_late_rate_smoothed
+        data_tests: [not_null]

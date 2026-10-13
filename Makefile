@@ -15,8 +15,8 @@ help:
 	@echo "make setup     install dependencies and git hooks"
 	@echo "make data      download the Olist CSVs into data/raw and verify checksums"
 	@echo "make sample    rebuild data/sample (the ~2k-order sample CI runs on)"
-	@echo "make dbt       build and test the DuckDB warehouse on data/raw"
-	@echo "make features  build the model input table                    (Week 3)"
+	@echo "make dbt       build and test the staging layer of the DuckDB warehouse"
+	@echo "make features  build and test the feature tables, with the leakage check"
 	@echo "make train     train baselines and the final model            (Weeks 4-5)"
 	@echo "make evaluate  score the test set and write reports/          (Week 7)"
 	@echo "make api       run the prediction API                         (Week 8)"
@@ -35,15 +35,16 @@ sample:
 	uv run python -m opspilot.data.make_sample
 
 # dbt runs from warehouse/: the paths in profiles.yml and _sources.yml are relative to it.
-# `make dbt DBT_TARGET=ci` builds on data/sample instead of data/raw, as CI does.
+# Add DBT_TARGET=ci to build on data/sample instead of data/raw, as CI does.
 DBT_TARGET ?= dev
 dbt:
-	cd warehouse && uv run dbt build --target $(DBT_TARGET)
+	cd warehouse && uv run dbt build --target $(DBT_TARGET) --select staging
+
+features:
+	cd warehouse && uv run dbt build --target $(DBT_TARGET) --select intermediate marts
 
 # Later weeks replace these stubs. They fail loudly so `make all` cannot
 # look green before the pipeline exists.
-features:
-	@echo "make features: not implemented yet (Week 3)"; exit 1
 
 train:
 	@echo "make train: not implemented yet (Weeks 4-5)"; exit 1
@@ -60,5 +61,7 @@ lint:
 	uv run ruff check .
 	uv run ruff format --check .
 
+# The tests read the warehouse built on data/sample, so build it first.
 test:
+	$(MAKE) dbt features DBT_TARGET=ci
 	uv run pytest

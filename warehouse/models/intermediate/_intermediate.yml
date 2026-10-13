@@ -1,0 +1,33 @@
+version: 2
+
+models:
+  - name: int_order_items_agg
+    description: Per-order price, freight, weight, volume, counts, primary seller and main category.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: primary_seller_id
+        description: The seller with the highest item value in the order.
+        data_tests: [not_null]
+
+  - name: int_zip_centroids
+    description: Mean latitude and longitude per zip prefix, bad geocodes removed.
+    columns:
+      - name: zip_code_prefix
+        data_tests: [unique, not_null]
+
+  - name: int_seller_history_asof
+    description: >
+      The primary seller's track record as of each order's t0, counting only
+      orders that had already been delivered by then.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: seller_past_delivered
+        description: The seller's other orders delivered before t0.
+        data_tests: [not_null]
+      - name: seller_late_rate_smoothed
+        description: Late share of those orders, shrunk toward the train late rate.
+        data_tests: [not_null]
+      - name: seller_last_delivery_used_at
+        description: Latest delivery counted in the history. Always before t0.

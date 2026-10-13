@@ -16,6 +16,8 @@ jobs:
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run ruff format --check .
-      - run: uv run pytest
-      # Builds and tests the warehouse on the committed sample in data/sample.
+      # Build and test the warehouse on the committed sample in data/sample;
+      # the Python tests then read it, including the leakage checks.
       - run: make dbt DBT_TARGET=ci
+      - run: make features DBT_TARGET=ci
+      - run: uv run pytest

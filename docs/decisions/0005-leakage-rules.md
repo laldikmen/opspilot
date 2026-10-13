@@ -1,6 +1,6 @@
 # 0005 · Leakage rules
 
-Status: accepted · 2026-10-12 · enforced by tests from Week 3
+Status: accepted · 2026-10-12 · enforced by tests since 2026-10-13
 
 ## Context
 
@@ -24,11 +24,27 @@ it was known at t0.
 
 ## How it is enforced
 
-- dbt test `assert_seller_history_no_future`: fails if any row of the seller
-  history uses an order delivered at or after t0.
-- `tests/test_leakage.py`: recomputes seller history for 50 random orders by
-  brute force in pandas and compares, and asserts that no forbidden column is
-  in the model input table.
+- dbt test `assert_seller_history_no_future`: `int_seller_history_asof` keeps
+  the latest delivery it counted for each order, and the test fails if that is
+  ever at or after t0.
+- `tests/test_leakage.py` recomputes the seller history of 50 random orders in
+  plain pandas and compares it with the dbt model. It also pins the exact
+  column list of the model input table, so a new column cannot slip in without
+  someone asking whether it was known at t0.
+
+Both checks were tried against the mistake they exist for: with the history
+filtered by purchase date instead of delivery date, the dbt test fails on 432
+rows of the sample and the pandas comparison fails.
+
+## Details fixed during implementation
+
+- A seller's history counts every order the seller has an item in, not only
+  the orders where they are the primary seller.
+- An order never counts toward its own history. This matters for the 61 orders
+  recorded as delivered before their own approval ([0002](0002-prediction-time.md)).
+- The smoothed rate is `(late + 20 × 0.0565) / (delivered + 20)`: the prior is
+  the train late rate, weighted as 20 orders. Both numbers are dbt vars, so the
+  warehouse does not need to know the split.
 
 ## Consequences
 

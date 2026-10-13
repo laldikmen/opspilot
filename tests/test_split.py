@@ -18,3 +18,7 @@ def test_no_split_reaches_past_the_censoring_cutoff():
     assert CENSORING_CUTOFF == date(2018, 7, 15)
     assert CENSORING_CUTOFF < OBSERVATION_END
     assert max(end for _, end in SPLITS.values()) == CENSORING_CUTOFF
+
+
+def test_dbt_censoring_cutoff_matches_config(dbt_vars):
+    assert date.fromisoformat(dbt_vars["censoring_cutoff"]) == CENSORING_CUTOFF

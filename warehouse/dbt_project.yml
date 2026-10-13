@@ -10,6 +10,16 @@ clean-targets: ["target", "dbt_packages"]
 flags:
   send_anonymous_usage_stats: false
 
+vars:
+  # Orders purchased after this date are censored (docs/decisions/0003).
+  # tests/test_split.py checks that it equals CENSORING_CUTOFF in config.py.
+  censoring_cutoff: "2018-07-15"
+  # A seller's late rate is shrunk toward this prior, weighted as this many
+  # orders. The prior is the train late rate, 2,453 / 43,426 (docs/decisions/0004);
+  # it is a constant here so that the warehouse does not need to know the split.
+  seller_prior_late_rate: 0.0565
+  seller_prior_strength: 20
+
 models:
   opspilot:
     staging:
