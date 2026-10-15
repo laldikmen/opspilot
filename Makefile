@@ -11,6 +11,9 @@ endif
 # the .pth file the editable install relies on.
 export PYTHONPATH := $(CURDIR)/src
 
+# No usage data sent from MLflow (dbt's is switched off in dbt_project.yml).
+export MLFLOW_DISABLE_TELEMETRY := true
+
 help:
 	@echo "make setup     install dependencies and git hooks"
 	@echo "make data      download the Olist CSVs into data/raw and verify checksums"
