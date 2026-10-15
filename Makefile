@@ -20,7 +20,7 @@ help:
 	@echo "make sample    rebuild data/sample (the ~2k-order sample CI runs on)"
 	@echo "make dbt       build and test the staging layer of the DuckDB warehouse"
 	@echo "make features  build and test the feature tables, with the leakage check"
-	@echo "make train     fit the baselines on the folds and validation, log to MLflow"
+	@echo "make train     fit the baselines and tune XGBoost on the folds and validation"
 	@echo "make mlflow    open the MLflow UI on http://127.0.0.1:5001"
 	@echo "make evaluate  score the test set and write reports/          (Week 7)"
 	@echo "make api       run the prediction API                         (Week 8)"
@@ -49,6 +49,7 @@ features:
 
 train:
 	uv run python -m opspilot.models.baselines
+	uv run python -m opspilot.models.train
 
 # Port 5000 is taken by AirPlay on macOS.
 mlflow:

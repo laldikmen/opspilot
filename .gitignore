@@ -6,6 +6,7 @@ data/raw/*
 mlruns/
 mlartifacts/
 mlflow.db
+artifacts/
 
 # Secrets and local settings
 .env

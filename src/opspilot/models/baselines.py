@@ -5,8 +5,6 @@ expanding-window folds and on validation, and logged to MLflow. The test set
 is not touched here.
 """
 
-from collections.abc import Callable
-
 import mlflow
 import numpy as np
 import pandas as pd
@@ -16,16 +14,13 @@ from sklearn.pipeline import make_pipeline
 from opspilot.config import FOLD_STARTS, RANDOM_SEED, SPLITS
 from opspilot.features.load import FEATURES, TARGET, load_features
 from opspilot.features.preprocess import build_preprocessor
-from opspilot.models.metrics import evaluate
-from opspilot.models.split import selection_periods
+from opspilot.models.selection import (
+    FitPredict,
+    evaluate_periods,
+    predict_on_periods,
+    selection_summary,
+)
 from opspilot.models.tracking import git_commit, log_period_metrics, start_experiment
-
-# A baseline takes the rows to fit on and the rows to score, and returns probabilities.
-FitPredict = Callable[[pd.DataFrame, pd.DataFrame], np.ndarray]
-
-# Averaged across the folds and validation to compare models. Lift rather than
-# PR-AUC, so the high-late-rate periods do not dominate (docs/decisions/0004).
-SELECTION_METRICS = ["lift", "roc_auc", "recall_top10", "brier"]
 
 
 def prior(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
@@ -54,24 +49,6 @@ BASELINES: dict[str, FitPredict] = {
 }
 
 
-def score_on_periods(features: pd.DataFrame, fit_predict: FitPredict) -> dict[str, dict]:
-    """Fit and score once per selection period; metrics keyed by period name."""
-    results = {}
-    for period in selection_periods():
-        fit_rows, score_rows = period.masks(features.purchase_date)
-        p = fit_predict(features[fit_rows], features[score_rows])
-        results[period.name] = evaluate(features.loc[score_rows, TARGET], p)
-    return results
-
-
-def selection_summary(results: dict[str, dict]) -> dict[str, float]:
-    """The mean of each selection metric across the folds and validation."""
-    return {
-        f"selection_{metric}": float(np.mean([r[metric] for r in results.values()]))
-        for metric in SELECTION_METRICS
-    }
-
-
 def run_params(model: str) -> dict:
     train_start, train_end = SPLITS["train"]
     validation_start, validation_end = SPLITS["validation"]
@@ -91,7 +68,7 @@ def main() -> None:
 
     rows = []
     for name, fit_predict in BASELINES.items():
-        results = score_on_periods(features, fit_predict)
+        results = evaluate_periods(predict_on_periods(features, fit_predict))
         summary = selection_summary(results)
         with mlflow.start_run(run_name=name):
             mlflow.set_tags({"git_commit": commit, "kind": "baseline"})

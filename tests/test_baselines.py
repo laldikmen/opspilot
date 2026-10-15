@@ -5,7 +5,8 @@ import pytest
 
 from opspilot.features.load import FEATURES, MART, TARGET
 from opspilot.features.preprocess import TOP_CATEGORIES, build_preprocessor
-from opspilot.models.baselines import BASELINES, score_on_periods, selection_summary
+from opspilot.models.baselines import BASELINES
+from opspilot.models.selection import evaluate_periods, predict_on_periods, selection_summary
 from opspilot.models.split import assign_split
 
 
@@ -40,7 +41,7 @@ def test_rare_categories_are_grouped(features):
 
 @pytest.mark.parametrize("name", BASELINES)
 def test_baseline_scores_every_selection_period(features, name):
-    results = score_on_periods(features, BASELINES[name])
+    results = evaluate_periods(predict_on_periods(features, BASELINES[name]))
     assert list(results) == ["fold_1", "fold_2", "fold_3", "validation"]
     for metrics in results.values():
         assert 0 < metrics["pr_auc"] <= 1

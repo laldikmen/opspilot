@@ -46,6 +46,10 @@ SPLITS = {
 # date, the last one until the end of train.
 FOLD_STARTS = [date(2017, 7, 1), date(2017, 9, 1), date(2017, 11, 1)]
 
+# Trained models; gitignored, rebuilt by `make train`.
+ARTIFACTS_DIR = REPO_ROOT / "artifacts"
+BUNDLE_PATH = ARTIFACTS_DIR / "model_bundle.joblib"
+
 # --- Experiment tracking -----------------------------------------------------
 MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", f"sqlite:///{REPO_ROOT / 'mlflow.db'}")
 MLFLOW_ARTIFACTS_DIR = REPO_ROOT / "mlruns"
