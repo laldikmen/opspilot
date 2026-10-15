@@ -1,6 +1,6 @@
 # 0004 · Chronological split
 
-Status: accepted · 2026-10-12 · revised 2026-10-13 (see Changes)
+Status: accepted · 2026-10-12 · revised 2026-10-13 and 2026-10-15 (see Changes)
 
 ## Context
 
@@ -23,8 +23,19 @@ Split by purchase date, both ends inclusive:
   `config.py`. It is not stored in the warehouse, so changing it later is a
   config edit, not a rebuild.
 - Hyperparameters are tuned on three expanding-window folds **inside train**.
+  Each fold is fitted on everything in train before the two months it scores:
+
+  | Fold | Fitted on | Scored on | Scored orders | Late rate |
+  | --- | --- | --- | ---: | ---: |
+  | 1 | 2017-01-01 to 2017-06-30 | July and August 2017 | 8,065 | 2.85% |
+  | 2 | 2017-01-01 to 2017-08-31 | September and October 2017 | 8,628 | 4.28% |
+  | 3 | 2017-01-01 to 2017-10-31 | November and December 2017 | 12,801 | 10.27% |
+
 - Models are selected on the average across those folds plus validation, never
-  on validation alone, because validation is a high-late-rate period.
+  on validation alone, because validation is a high-late-rate period. The
+  number averaged is **lift** (PR-AUC divided by that period's late rate), so
+  the two high-late-rate periods do not dominate. ROC-AUC, top-10% recall and
+  the Brier score are averaged alongside.
 - The test set is scored once, in Week 7, and the model is not changed after.
 
 The start and end of the window come from [0003](0003-censoring-cutoff.md).
@@ -50,6 +61,10 @@ a leak, but it has to be handled:
   teach seasonality; the model would only memorize the months of 2017.
 - Train contains one spike (November 2017), so the model has seen a bad month,
   but only one.
+- Every fit uses the labels of all orders purchased before the period it
+  scores, including orders that would still have been in transit on that
+  period's first day. A live system would not know those outcomes yet. This
+  flatters every model by a similar small amount and goes in the limitations.
 
 ## Alternative considered
 
@@ -64,3 +79,5 @@ for a stable PR-AUC interval.
   of the validation spike, model selection moved from "validation" to "the
   average across the folds plus validation", the split moved out of dbt into
   `split.py`, `purchase_month` was dropped, and calibration became ADR 0006.
+- 2026-10-15: the fold dates were fixed and the selection number defined as
+  mean lift across the folds and validation (Week 4).

@@ -3,10 +3,11 @@
 Predicts which e-commerce orders will arrive late, using only what was known
 when the order was approved.
 
-> **Status:** work in progress. Weeks 1-3 of 9 are done: setup, EDA, design
-> decisions, and the warehouse up to a leakage-tested feature table. Modelling
-> is next. `v1.0.0` is planned for 14 December 2026. Results, architecture and
-> limitations land here as each part is built.
+> **Status:** work in progress. Weeks 1-4 of 9 are done: setup, EDA, design
+> decisions, the warehouse up to a leakage-tested feature table, and three
+> baselines tracked in MLflow. The main model is next. `v1.0.0` is planned for
+> 14 December 2026. Results, architecture and limitations land here as each
+> part is built.
 
 ## What v1 will be
 
@@ -25,6 +26,8 @@ make setup      # install dependencies and git hooks
 make data       # download the Olist CSVs into data/raw and verify checksums
 make dbt        # build and test the staging layer in DuckDB
 make features   # build and test the feature table, including the leakage check
+make train      # fit the baselines on the folds and validation, log to MLflow
+make mlflow     # browse the runs at http://127.0.0.1:5001
 make test       # rebuild the warehouse on data/sample, then run pytest
 ```
 

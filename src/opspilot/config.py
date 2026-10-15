@@ -40,3 +40,13 @@ SPLITS = {
     "validation": (date(2018, 1, 1), date(2018, 3, 31)),
     "test": (date(2018, 4, 1), CENSORING_CUTOFF),
 }
+
+# Expanding-window folds inside train (docs/decisions/0004). Fold k is fitted on
+# train up to the day before its start date and scored until the next start
+# date, the last one until the end of train.
+FOLD_STARTS = [date(2017, 7, 1), date(2017, 9, 1), date(2017, 11, 1)]
+
+# --- Experiment tracking -----------------------------------------------------
+MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", f"sqlite:///{REPO_ROOT / 'mlflow.db'}")
+MLFLOW_ARTIFACTS_DIR = REPO_ROOT / "mlruns"
+MLFLOW_EXPERIMENT = "late-delivery"

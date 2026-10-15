@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup data sample dbt features train evaluate api all lint test
+.PHONY: help setup data sample dbt features train mlflow evaluate api all lint test
 
 ifneq (,$(wildcard .env))
 include .env
@@ -17,7 +17,8 @@ help:
 	@echo "make sample    rebuild data/sample (the ~2k-order sample CI runs on)"
 	@echo "make dbt       build and test the staging layer of the DuckDB warehouse"
 	@echo "make features  build and test the feature tables, with the leakage check"
-	@echo "make train     train baselines and the final model            (Weeks 4-5)"
+	@echo "make train     fit the baselines on the folds and validation, log to MLflow"
+	@echo "make mlflow    open the MLflow UI on http://127.0.0.1:5001"
 	@echo "make evaluate  score the test set and write reports/          (Week 7)"
 	@echo "make api       run the prediction API                         (Week 8)"
 	@echo "make all       data -> dbt -> features -> train -> evaluate"
@@ -43,11 +44,15 @@ dbt:
 features:
 	cd warehouse && uv run dbt build --target $(DBT_TARGET) --select intermediate marts
 
+train:
+	uv run python -m opspilot.models.baselines
+
+# Port 5000 is taken by AirPlay on macOS.
+mlflow:
+	uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5001
+
 # Later weeks replace these stubs. They fail loudly so `make all` cannot
 # look green before the pipeline exists.
-
-train:
-	@echo "make train: not implemented yet (Weeks 4-5)"; exit 1
 
 evaluate:
 	@echo "make evaluate: not implemented yet (Week 7)"; exit 1
