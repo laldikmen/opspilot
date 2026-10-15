@@ -14,6 +14,7 @@ TARGET = "is_late"
 
 NUMERIC_FEATURES = [
     "promised_days",
+    "promise_slack_days",
     "approval_delay_hours",
     "purchase_dow",
     "purchase_hour",
@@ -27,11 +28,14 @@ NUMERIC_FEATURES = [
     "total_volume_cm3",
     "same_state",
     "distance_km",
+    "route_mean_delivery_days",
+    "route_late_rate_smoothed",
     "installments",
     "n_payment_methods",
     "seller_past_delivered",
     "seller_late_rate_smoothed",
     "seller_days_active",
+    "seller_mean_handover_days",
 ]
 CATEGORICAL_FEATURES = ["main_category", "customer_state", "seller_state", "payment_type"]
 FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES

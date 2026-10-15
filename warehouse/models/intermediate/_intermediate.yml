@@ -31,3 +31,27 @@ models:
         data_tests: [not_null]
       - name: seller_last_delivery_used_at
         description: Latest delivery counted in the history. Always before t0.
+
+  - name: int_route_history_asof
+    description: >
+      Delivery time and late rate on the order's route (seller state to customer
+      state) as of t0, counting only orders delivered before t0.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: route_past_delivered
+        data_tests: [not_null]
+      - name: route_last_delivery_used_at
+        description: Latest delivery counted in the history. Always before t0.
+
+  - name: int_seller_handover_asof
+    description: >
+      The primary seller's mean days from approval to carrier handover, over
+      handovers that happened before t0.
+    columns:
+      - name: order_id
+        data_tests: [unique, not_null]
+      - name: seller_past_handovers
+        data_tests: [not_null]
+      - name: seller_last_handover_used_at
+        description: Latest handover counted in the history. Always before t0.

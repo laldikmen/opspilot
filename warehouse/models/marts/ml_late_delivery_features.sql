@@ -21,6 +21,18 @@ seller_history as (
 
 ),
 
+seller_handover as (
+
+    select * from {{ ref('int_seller_handover_asof') }}
+
+),
+
+route_history as (
+
+    select * from {{ ref('int_route_history_asof') }}
+
+),
+
 customers as (
 
     select
@@ -81,6 +93,9 @@ select
     -- The promise and the approval
     date_diff('second', orders.t0, cast(orders.estimated_delivery_date as timestamp))
     / 86400.0 as promised_days,
+    -- Positive when the promise is more generous than this route usually needs.
+    date_diff('second', orders.t0, cast(orders.estimated_delivery_date as timestamp)) / 86400.0
+    - route_history.route_mean_delivery_days as promise_slack_days,
     date_diff('second', orders.purchased_at, orders.approved_at) / 3600.0 as approval_delay_hours,
     isodow(orders.purchased_at) as purchase_dow,
     hour(orders.purchased_at) as purchase_hour,
@@ -98,6 +113,8 @@ select
     order_items.main_category,
 
     -- The route
+    route_history.route_mean_delivery_days,
+    route_history.route_late_rate_smoothed,
     customers.customer_state,
     sellers.seller_state,
     cast(customers.customer_state = sellers.seller_state as integer) as same_state,
@@ -113,11 +130,14 @@ select
     -- The seller, as of t0
     seller_history.seller_past_delivered,
     seller_history.seller_late_rate_smoothed,
-    seller_history.seller_days_active
+    seller_history.seller_days_active,
+    seller_handover.seller_mean_handover_days
 
 from orders
 left join order_items on orders.order_id = order_items.order_id
 left join seller_history on orders.order_id = seller_history.order_id
+left join seller_handover on orders.order_id = seller_handover.order_id
+left join route_history on orders.order_id = route_history.order_id
 left join customers on orders.customer_id = customers.customer_id
 left join sellers on order_items.primary_seller_id = sellers.seller_id
 left join payment_totals on orders.order_id = payment_totals.order_id

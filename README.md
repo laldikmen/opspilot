@@ -3,11 +3,11 @@
 Predicts which e-commerce orders will arrive late, using only what was known
 when the order was approved.
 
-> **Status:** work in progress. Weeks 1-4 of 9 are done: setup, EDA, design
-> decisions, the warehouse up to a leakage-tested feature table, and three
-> baselines tracked in MLflow. The main model is next. `v1.0.0` is planned for
-> 14 December 2026. Results, architecture and limitations land here as each
-> part is built.
+> **Status:** work in progress. Weeks 1-5 of 9 are done: setup, EDA, design
+> decisions, a leakage-tested feature table, three baselines, and a tuned,
+> calibrated XGBoost chosen on validation data only
+> ([model selection](reports/model_selection.md)). The test set has not been
+> scored yet. `v1.0.0` is planned for 14 December 2026.
 
 ## What v1 will be
 
@@ -26,7 +26,7 @@ make setup      # install dependencies and git hooks
 make data       # download the Olist CSVs into data/raw and verify checksums
 make dbt        # build and test the staging layer in DuckDB
 make features   # build and test the feature table, including the leakage check
-make train      # fit the baselines on the folds and validation, log to MLflow
+make train      # baselines, then tune XGBoost and save the calibrated model bundle
 make mlflow     # browse the runs at http://127.0.0.1:5001
 make test       # rebuild the warehouse on data/sample, then run pytest
 ```
@@ -46,7 +46,7 @@ The decisions that shape everything else, with the numbers behind them
 3. [Censoring cutoff](docs/decisions/0003-censoring-cutoff.md): the 10,201 labeled orders purchased after 2018-07-15 are dropped, because their slow deliveries are missing from the data.
 4. [Chronological split](docs/decisions/0004-chronological-split.md): train on 2017, validate on Q1 2018, test on April to mid-July 2018. Validation runs at three times the test late rate, so models are never selected on it alone.
 5. [Leakage rules](docs/decisions/0005-leakage-rules.md): nothing recorded after approval, and seller history only from orders already delivered.
-6. [Calibration under shift](docs/decisions/0006-calibration-under-shift.md): open until Week 5.
+6. [Calibration under shift](docs/decisions/0006-calibration-under-shift.md): sigmoid calibration fitted on the pooled folds and validation, chosen by replaying each option one period back in time.
 
 ## License
 

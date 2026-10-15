@@ -19,6 +19,9 @@ vars:
   # it is a constant here so that the warehouse does not need to know the split.
   seller_prior_late_rate: 0.0565
   seller_prior_strength: 20
+  # Route and handover histories are shrunk toward the same quantity over all
+  # orders known at t0, weighted as this many orders.
+  history_prior_strength: 20
 
 models:
   opspilot:

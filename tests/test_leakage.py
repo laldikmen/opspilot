@@ -17,6 +17,9 @@ FORBIDDEN_COLUMNS = {
     "seller_late_rate",
     "seller_past_late",
     "seller_last_delivery_used_at",
+    "seller_last_handover_used_at",
+    "route_last_delivery_used_at",
+    "route_past_late",
 }
 
 N_ORDERS = 50
@@ -26,7 +29,7 @@ def test_feature_table_has_exactly_the_agreed_columns(warehouse):
     # A new column fails here first, which forces the question "was it known at t0?"
     columns = [row[0] for row in warehouse.sql(f"describe {MART}").fetchall()]
     assert sorted(columns) == sorted(ID_COLUMNS + [TARGET] + FEATURES)
-    assert len(FEATURES) == 23
+    assert len(FEATURES) == 27
 
 
 def test_no_forbidden_column_is_a_feature(warehouse):
@@ -83,3 +86,87 @@ def test_seller_history_matches_brute_force(warehouse, dbt_vars):
     # and if the wrong rule (purchased before t0) would have produced other numbers.
     assert sum(known_counts) > 0
     assert known_counts != purchased_counts
+
+
+@pytest.fixture(scope="module")
+def orders(warehouse):
+    """Every order with t0, label, route and primary seller, worked out in pandas."""
+    orders = warehouse.sql("""
+        select stg.order_id, stg.order_status, stg.purchased_at, stg.approved_at,
+               stg.carrier_handover_at, stg.delivered_at, stg.estimated_delivery_date,
+               items.primary_seller_id as seller_id,
+               sellers.seller_state || '>' || customers.customer_state as route
+        from stg_orders as stg
+        inner join int_order_items_agg as items using (order_id)
+        inner join stg_sellers as sellers on sellers.seller_id = items.primary_seller_id
+        inner join stg_customers as customers using (customer_id)
+    """).df()
+    orders["t0"] = orders.approved_at.fillna(orders.purchased_at)
+    orders["labeled"] = (orders.order_status == "delivered") & orders.delivered_at.notna()
+    orders["is_late"] = (
+        orders.delivered_at.dt.normalize() > pd.to_datetime(orders.estimated_delivery_date)
+    ).astype(int)
+    orders["delivery_days"] = (orders.delivered_at - orders.t0).dt.total_seconds() / 86400
+    orders["handover_days"] = (
+        (orders.carrier_handover_at - orders.approved_at).dt.total_seconds() / 86400
+    ).clip(lower=0)
+    return orders.set_index("order_id", drop=False)
+
+
+def checked_orders(warehouse, model: str) -> pd.DataFrame:
+    return (
+        warehouse.sql(f"""
+            select * from {model}
+            where order_id in (select order_id from {MART})
+            order by order_id
+        """)
+        .df()
+        .sample(N_ORDERS, random_state=RANDOM_SEED)
+    )
+
+
+def test_route_history_matches_brute_force(warehouse, dbt_vars, orders):
+    strength = dbt_vars["history_prior_strength"]
+    counts = []
+    for row in checked_orders(warehouse, "int_route_history_asof").itertuples():
+        me = orders.loc[row.order_id]
+        known = orders[
+            orders.labeled & (orders.delivered_at < me.t0) & (orders.order_id != row.order_id)
+        ]
+        route = known[known.route == me.route]
+        n = len(route)
+
+        assert row.route_past_delivered == n, row.order_id
+        # Both sides are NaN for the first orders, when nothing has been delivered yet.
+        assert row.route_mean_delivery_days == pytest.approx(
+            (route.delivery_days.sum() + strength * known.delivery_days.mean()) / (n + strength),
+            nan_ok=True,
+        )
+        assert row.route_late_rate_smoothed == pytest.approx(
+            (route.is_late.sum() + strength * known.is_late.mean()) / (n + strength),
+            nan_ok=True,
+        )
+        counts.append(n)
+    assert sum(counts) > 0
+
+
+def test_seller_handover_matches_brute_force(warehouse, dbt_vars, orders):
+    strength = dbt_vars["history_prior_strength"]
+    counts = []
+    for row in checked_orders(warehouse, "int_seller_handover_asof").itertuples():
+        me = orders.loc[row.order_id]
+        known = orders[
+            orders.handover_days.notna()
+            & (orders.carrier_handover_at < me.t0)
+            & (orders.order_id != row.order_id)
+        ]
+        seller = known[known.seller_id == me.seller_id]
+        n = len(seller)
+
+        assert row.seller_past_handovers == n, row.order_id
+        assert row.seller_mean_handover_days == pytest.approx(
+            (seller.handover_days.sum() + strength * known.handover_days.mean()) / (n + strength),
+            nan_ok=True,
+        )
+        counts.append(n)
+    assert sum(counts) > 0
