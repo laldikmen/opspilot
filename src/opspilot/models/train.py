@@ -16,7 +16,7 @@ from sklearn.model_selection import ParameterSampler
 from sklearn.pipeline import Pipeline, make_pipeline
 from xgboost import XGBClassifier
 
-from opspilot.config import ARTIFACTS_DIR, RANDOM_SEED
+from opspilot.config import ARTIFACTS_DIR, RANDOM_SEED, SPLITS
 from opspilot.features.load import FEATURES, TARGET, load_features
 from opspilot.features.preprocess import build_preprocessor
 from opspilot.models.bundle import build_bundle, save_bundle
@@ -33,7 +33,8 @@ from opspilot.models.selection import (
     predict_on_periods,
     selection_summary,
 )
-from opspilot.models.split import assign_split
+from opspilot.models.selection_report import compare_models, write_selection_report
+from opspilot.models.split import final_period
 from opspilot.models.tracking import git_commit, log_period_metrics, start_experiment
 
 N_TRIALS = 40
@@ -122,11 +123,15 @@ def evaluate_candidate(features: pd.DataFrame, params: dict) -> dict:
 def final_calibrators(predictions: dict[str, pd.DataFrame]) -> dict:
     """Every strategy, fitted on all four periods, ready to apply to the test period.
 
-    "last_*" is fitted on validation; "pooled_*" on the folds plus validation.
+    "last_*" is fitted on validation; "pooled_*" on the folds plus validation. Either
+    way, only on orders whose outcome was known on the first test day.
     """
+    test_start = pd.Timestamp(SPLITS["test"][0])
     calibrators = {"none": None}
     for strategy in STRATEGIES[1:]:
-        rows = calibration_rows(predictions, strategy, upto=len(predictions))
+        rows = calibration_rows(
+            predictions, strategy, upto=len(predictions), known_before=test_start
+        )
         calibrators[strategy] = fit_calibrator(strategy.split("_")[1], rows.p, rows.y)
     return calibrators
 
@@ -159,13 +164,20 @@ def main() -> None:
     backtest_summary = summarize_backtest(backtest_results)
     chosen = backtest_summary.index[0]
 
-    train = features[assign_split(features.purchase_date) == "train"]
-    model = fit_xgboost(train, best["params"])
+    # Train rows known by the first test day. The test rows themselves are not scored here.
+    fit_rows, _ = final_period().masks(features)
+    model = fit_xgboost(features[fit_rows], best["params"])
     calibrators = final_calibrators(best["predictions"])
     bundle = build_bundle(model, calibrators[chosen], chosen, best["params"], commit)
     path = save_bundle(bundle)
     joblib.dump(calibrators, ARTIFACTS_DIR / "calibrators.joblib")
     backtest_results.to_csv(ARTIFACTS_DIR / "calibration_backtest.csv", index=False)
+
+    table, bootstrap = compare_models(features, best["predictions"], "xgboost")
+    late_rates = {name: r["late_rate"] for name, r in best["results"].items()}
+    report = write_selection_report(
+        table, bootstrap, backtest_results, backtest_summary, late_rates, commit
+    )
 
     with mlflow.start_run(run_name="xgboost_final"):
         mlflow.set_tags({**tags, "calibration": chosen, "bundle_version": bundle["version"]})
@@ -177,6 +189,7 @@ def main() -> None:
         )
         mlflow.log_artifact(str(path))
         mlflow.log_artifact(str(ARTIFACTS_DIR / "calibration_backtest.csv"))
+        mlflow.log_artifact(str(report))
 
     print("\nBest parameters:", best["params"])
     print(
@@ -187,7 +200,11 @@ def main() -> None:
     print("\nCalibration backtest (fitted on earlier periods only):")
     print(backtest_results.pivot(index="strategy", columns="period", values="brier").round(4))
     print(backtest_summary.round(4))
+    print("\nAll models on the folds and validation:")
+    print(table.round(3).to_string())
+    print(bootstrap.round(3).to_string(index=False))
     print(f"\nChosen calibration: {chosen}. Bundle {bundle['version']} saved to {path}")
+    print(f"Selection tables written to {report}")
 
 
 if __name__ == "__main__":

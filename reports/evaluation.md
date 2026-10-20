@@ -11,6 +11,7 @@ Test late rate (the PR-AUC of a random model): _TBD_
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | Prior (train late rate) | | | | | | | |
 | Rule: seller smoothed late rate | | | | | | | |
+| Rule: route late rate | | | | | | | |
 | Logistic regression | | | | | | | |
 | XGBoost, uncalibrated | | | | | | | |
 | XGBoost, calibrated on validation | | | | | | | |

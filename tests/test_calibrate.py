@@ -18,7 +18,8 @@ def period(late_rate: float, n: int = 1000, seed: int = 0, signal: float = 0.02)
     rng = np.random.default_rng(seed)
     y = (rng.random(n) < late_rate).astype(int)
     p = np.clip(0.05 + signal * y + rng.normal(0, 0.01, n), 0.001, 0.999)
-    return pd.DataFrame({"y": y, "p": p})
+    known = pd.Timestamp("2016-01-01")  # long before any period starts
+    return pd.DataFrame({"y": y, "p": p, "outcome_known_at": known})
 
 
 PREDICTIONS = {
@@ -44,10 +45,24 @@ def test_calibrator_keeps_the_ranking(method):
     assert np.all(np.diff(calibrated) >= -1e-12)
 
 
+LATER = pd.Timestamp("2030-01-01")
+
+
 def test_calibration_rows_use_only_periods_before_the_target():
-    assert calibration_rows(PREDICTIONS, "last_isotonic", upto=2) is PREDICTIONS["fold_2"]
-    pooled = calibration_rows(PREDICTIONS, "pooled_sigmoid", upto=2)
+    last = calibration_rows(PREDICTIONS, "last_isotonic", upto=2, known_before=LATER)
+    assert last.equals(PREDICTIONS["fold_2"])
+    pooled = calibration_rows(PREDICTIONS, "pooled_sigmoid", upto=2, known_before=LATER)
     assert len(pooled) == len(PREDICTIONS["fold_1"]) + len(PREDICTIONS["fold_2"])
+
+
+def test_calibration_rows_skip_outcomes_not_yet_known():
+    rows = PREDICTIONS["fold_2"].copy()
+    rows.loc[rows.index[:100], "outcome_known_at"] = pd.Timestamp("2018-04-15")
+    predictions = {"fold_1": PREDICTIONS["fold_1"], "fold_2": rows}
+    used = calibration_rows(
+        predictions, "last_sigmoid", upto=2, known_before=pd.Timestamp("2018-04-01")
+    )
+    assert len(used) == len(rows) - 100
 
 
 def test_backtest_scores_every_strategy_on_every_later_period():

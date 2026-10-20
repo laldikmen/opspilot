@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from opspilot.config import WAREHOUSE_DIR
+from opspilot.features.load import load_features
 
 
 @pytest.fixture(scope="session")
@@ -32,3 +33,9 @@ def warehouse(warehouse_path):
 @pytest.fixture(scope="session")
 def dbt_vars() -> dict:
     return yaml.safe_load((WAREHOUSE_DIR / "dbt_project.yml").read_text())["vars"]
+
+
+@pytest.fixture(scope="session")
+def features(warehouse_path):
+    """The model input table plus outcome_known_at, as load_features returns it."""
+    return load_features(warehouse_path)

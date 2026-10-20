@@ -9,7 +9,7 @@ from collections.abc import Callable
 import numpy as np
 import pandas as pd
 
-from opspilot.features.load import TARGET
+from opspilot.features.load import OUTCOME_KNOWN_AT, TARGET
 from opspilot.models.metrics import evaluate
 from opspilot.models.split import selection_periods
 
@@ -24,12 +24,13 @@ SELECTION_METRICS = ["lift", "roc_auc", "recall_top10", "brier"]
 def predict_on_periods(features: pd.DataFrame, fit_predict: FitPredict) -> dict[str, pd.DataFrame]:
     """Out-of-sample predictions for each period, in time order.
 
-    Each frame has order_id, purchase_date, the label as y and the prediction as p.
+    Each frame has order_id, purchase_date, outcome_known_at, the label as y and
+    the prediction as p.
     """
     predictions = {}
     for period in selection_periods():
-        fit_rows, score_rows = period.masks(features.purchase_date)
-        scored = features.loc[score_rows, ["order_id", "purchase_date", TARGET]]
+        fit_rows, score_rows = period.masks(features)
+        scored = features.loc[score_rows, ["order_id", "purchase_date", OUTCOME_KNOWN_AT, TARGET]]
         predictions[period.name] = scored.rename(columns={TARGET: "y"}).assign(
             p=fit_predict(features[fit_rows], features[score_rows])
         )

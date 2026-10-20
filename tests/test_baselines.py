@@ -3,16 +3,11 @@
 import numpy as np
 import pytest
 
-from opspilot.features.load import FEATURES, MART, TARGET
+from opspilot.features.load import FEATURES, TARGET
 from opspilot.features.preprocess import TOP_CATEGORIES, build_preprocessor
 from opspilot.models.baselines import BASELINES
 from opspilot.models.selection import evaluate_periods, predict_on_periods, selection_summary
 from opspilot.models.split import assign_split
-
-
-@pytest.fixture(scope="module")
-def features(warehouse):
-    return warehouse.sql(f"select * from {MART} order by t0, order_id").df()
 
 
 @pytest.mark.parametrize("scale", [False, True])

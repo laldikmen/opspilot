@@ -20,6 +20,7 @@ FORBIDDEN_COLUMNS = {
     "seller_last_handover_used_at",
     "route_last_delivery_used_at",
     "route_past_late",
+    "outcome_known_at",
 }
 
 N_ORDERS = 50
@@ -170,3 +171,16 @@ def test_seller_handover_matches_brute_force(warehouse, dbt_vars, orders):
         )
         counts.append(n)
     assert sum(counts) > 0
+
+
+def test_outcome_known_at_is_delivery_or_the_day_after_a_broken_promise(warehouse):
+    orders = warehouse.sql("""
+        select is_late, delivered_at, estimated_delivery_date, outcome_known_at
+        from fct_orders where is_labeled
+    """).df()
+    on_time, late = orders[orders.is_late == 0], orders[orders.is_late == 1]
+    assert (on_time.outcome_known_at == on_time.delivered_at).all()
+    day_after = pd.to_datetime(late.estimated_delivery_date) + pd.Timedelta(days=1)
+    assert (late.outcome_known_at == day_after).all()
+    # A late order is known no later than it is delivered.
+    assert (orders.outcome_known_at <= orders.delivered_at).all()

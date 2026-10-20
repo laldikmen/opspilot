@@ -12,6 +12,7 @@ from sklearn.isotonic import IsotonicRegression
 from sklearn.linear_model import LogisticRegression
 
 from opspilot.models.metrics import brier, expected_calibration_error
+from opspilot.models.split import selection_periods
 
 METHODS = ["isotonic", "sigmoid"]
 # Which earlier predictions a calibrator is fitted on. "last" is the most recent
@@ -57,14 +58,20 @@ def fit_calibrator(method: str, p, y):
 
 
 def calibration_rows(
-    predictions: dict[str, pd.DataFrame], strategy: str, upto: int
+    predictions: dict[str, pd.DataFrame], strategy: str, upto: int, known_before: pd.Timestamp
 ) -> pd.DataFrame:
-    """The predictions a strategy is fitted on, using only periods before index `upto`."""
+    """The predictions a strategy is fitted on.
+
+    Only periods before index `upto`, and only orders whose outcome was known by
+    `known_before`, the day the calibrator would start being used.
+    """
     names = list(predictions)[:upto]
     source = strategy.split("_")[0]
     if source == "last":
-        return predictions[names[-1]]
-    return pd.concat([predictions[name] for name in names])
+        rows = predictions[names[-1]]
+    else:
+        rows = pd.concat([predictions[name] for name in names])
+    return rows[rows.outcome_known_at < known_before]
 
 
 def apply_strategy(strategy: str, fit_rows: pd.DataFrame | None, p) -> np.ndarray:
@@ -81,12 +88,17 @@ def backtest(predictions: dict[str, pd.DataFrame]) -> pd.DataFrame:
     by selection.predict_on_periods. The first period has nothing before it and
     is only used for fitting.
     """
+    starts = {period.name: pd.Timestamp(period.score_start) for period in selection_periods()}
     rows = []
     names = list(predictions)
     for i in range(1, len(names)):
         target = predictions[names[i]]
         for strategy in STRATEGIES:
-            fit_rows = None if strategy == "none" else calibration_rows(predictions, strategy, i)
+            fit_rows = (
+                None
+                if strategy == "none"
+                else calibration_rows(predictions, strategy, i, known_before=starts[names[i]])
+            )
             p = apply_strategy(strategy, fit_rows, target.p)
             rows.append(
                 {

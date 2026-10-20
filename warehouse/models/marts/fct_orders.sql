@@ -33,6 +33,14 @@ select
     case
         when is_labeled then cast(cast(delivered_at as date) > estimated_delivery_date as integer)
     end as is_late,
+    -- When the outcome became known: an on-time order once it was delivered, a
+    -- late one as soon as its promised day had passed without a delivery.
+    -- Models only learn from outcomes known when they would be used (ADR 0004).
+    case
+        when is_labeled and cast(delivered_at as date) > estimated_delivery_date
+            then cast(estimated_delivery_date + interval 1 day as timestamp)
+        when is_labeled then delivered_at
+    end as outcome_known_at,
     -- Purchased too close to the end of the data for a slow delivery to be seen (ADR 0003).
     cast(purchased_at as date) > date '{{ var("censoring_cutoff") }}' as is_censored
 from labeled

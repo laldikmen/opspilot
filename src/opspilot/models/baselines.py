@@ -1,4 +1,4 @@
-"""Baselines: training prior, seller smoothed late-rate rule, logistic regression.
+"""Baselines: training prior, two one-feature rules, logistic regression.
 
 Run with `make train`. Each baseline is fitted and scored on the three
 expanding-window folds and on validation, and logged to MLflow. The test set
@@ -33,6 +33,14 @@ def seller_rate_rule(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
     return score["seller_late_rate_smoothed"].to_numpy()
 
 
+def route_rate_rule(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
+    """Rank by the late rate of the order's route as of t0. Nothing is fitted.
+
+    The strongest single-feature rule found on the folds and validation.
+    """
+    return score["route_late_rate_smoothed"].fillna(fit[TARGET].mean()).to_numpy()
+
+
 def logistic_regression(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
     model = make_pipeline(
         build_preprocessor(scale=True),
@@ -45,6 +53,7 @@ def logistic_regression(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
 BASELINES: dict[str, FitPredict] = {
     "prior": prior,
     "seller_rate_rule": seller_rate_rule,
+    "route_rate_rule": route_rate_rule,
     "logistic_regression": logistic_regression,
 }
 

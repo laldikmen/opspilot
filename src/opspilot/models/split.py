@@ -10,6 +10,7 @@ from datetime import date, timedelta
 import pandas as pd
 
 from opspilot.config import FOLD_STARTS, SPLITS
+from opspilot.features.load import OUTCOME_KNOWN_AT
 
 
 def assign_split(purchase_date: pd.Series) -> pd.Series:
@@ -31,11 +32,22 @@ class Period:
     score_start: date
     score_end: date
 
-    def masks(self, purchase_date: pd.Series) -> tuple[pd.Series, pd.Series]:
-        dates = pd.to_datetime(purchase_date)
+    def masks(self, features: pd.DataFrame) -> tuple[pd.Series, pd.Series]:
+        """Rows to fit on and rows to score.
+
+        A model used from the first scored day can only have learned from orders
+        whose outcome was known by then, so fit rows still in transit are left out.
+        """
+        dates = pd.to_datetime(features.purchase_date)
+        start = pd.Timestamp(self.score_start)
         fit = dates.between(pd.Timestamp(self.fit_start), pd.Timestamp(self.fit_end))
-        score = dates.between(pd.Timestamp(self.score_start), pd.Timestamp(self.score_end))
-        return fit, score
+        score = dates.between(start, pd.Timestamp(self.score_end))
+        return fit & known_before(features, start), score
+
+
+def known_before(features: pd.DataFrame, moment: date | pd.Timestamp) -> pd.Series:
+    """True for orders whose outcome was known before `moment`."""
+    return features[OUTCOME_KNOWN_AT] < pd.Timestamp(moment)
 
 
 def expanding_window_folds() -> list[Period]:
@@ -60,3 +72,10 @@ def selection_periods() -> list[Period]:
     validation_start, validation_end = SPLITS["validation"]
     validation = Period("validation", train_start, train_end, validation_start, validation_end)
     return [*expanding_window_folds(), validation]
+
+
+def final_period() -> Period:
+    """Fit on train, score test. Week 7 scores test once; before that only the fit rows are used."""
+    train_start, train_end = SPLITS["train"]
+    test_start, test_end = SPLITS["test"]
+    return Period("test", train_start, train_end, test_start, test_end)

@@ -3,16 +3,10 @@
 import numpy as np
 import pytest
 
-from opspilot.features.load import MART
 from opspilot.models.bundle import build_bundle, load_bundle, predict_proba, save_bundle
 from opspilot.models.calibrate import fit_calibrator
 from opspilot.models.split import assign_split
 from opspilot.models.train import DEFAULT_PARAMS, MAX_ROUNDS, candidates, fit_xgboost
-
-
-@pytest.fixture(scope="module")
-def features(warehouse):
-    return warehouse.sql(f"select * from {MART} order by t0, order_id").df()
 
 
 @pytest.fixture(scope="module")

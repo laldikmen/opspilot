@@ -8,6 +8,7 @@ from opspilot.models.metrics import (
     evaluate,
     expected_calibration_error,
     lift,
+    paired_bootstrap,
     pr_auc,
     precision_recall_at_top,
     roc_auc,
@@ -79,3 +80,20 @@ def test_evaluate_reports_every_metric():
         "brier",
         "ece",
     }
+
+
+def test_paired_bootstrap_of_a_model_against_itself_is_exactly_zero():
+    rng = np.random.default_rng(0)
+    y = (rng.random(500) < 0.2).astype(int)
+    p = rng.random(500)
+    assert paired_bootstrap(y, p, p, n_resamples=200) == pytest.approx((0.0, 0.0, 0.0))
+
+
+def test_paired_bootstrap_interval_excludes_zero_for_a_clearly_better_model():
+    rng = np.random.default_rng(0)
+    y = (rng.random(2000) < 0.2).astype(int)
+    good = y + rng.normal(0, 0.5, 2000)
+    noise = rng.random(2000)
+    difference, low, high = paired_bootstrap(y, good, noise, n_resamples=200)
+    assert low > 0
+    assert low <= difference <= high

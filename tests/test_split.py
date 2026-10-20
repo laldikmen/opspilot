@@ -53,3 +53,23 @@ def test_folds_expand_inside_train_and_never_reach_test():
 
     test_start = SPLITS["test"][0]
     assert all(period.score_end < test_start for period in selection_periods())
+
+
+def test_no_fit_ever_learns_an_outcome_still_unknown_when_its_period_starts(features):
+    from opspilot.models.split import final_period, selection_periods
+
+    for period in [*selection_periods(), final_period()]:
+        fit_rows, score_rows = period.masks(features)
+        start = pd.Timestamp(period.score_start)
+        assert (features.loc[fit_rows, "outcome_known_at"] < start).all(), period.name
+        assert not (fit_rows & score_rows).any(), period.name
+
+
+def test_the_embargo_drops_recent_orders_still_in_transit(features):
+    from opspilot.models.split import assign_split, selection_periods
+
+    validation = selection_periods()[-1]
+    fit_rows, _ = validation.masks(features)
+    in_train = assign_split(features.purchase_date) == "train"
+    # Some December orders were still undelivered, and not yet late, on 1 January.
+    assert fit_rows.sum() < in_train.sum()

@@ -3,6 +3,8 @@
 import numpy as np
 from sklearn.metrics import average_precision_score, roc_auc_score
 
+from opspilot.config import RANDOM_SEED
+
 # The business question: if an operations team can check 1 order in 10, which ones?
 TOP_FRACTION = 0.10
 
@@ -63,3 +65,18 @@ def evaluate(y_true, p) -> dict[str, float]:
         "brier": brier(y_true, p),
         "ece": expected_calibration_error(y_true, p),
     }
+
+
+def paired_bootstrap(
+    y_true, p_a, p_b, metric=lift, n_resamples: int = 1000, seed: int = RANDOM_SEED
+) -> tuple[float, float, float]:
+    """metric(a) minus metric(b), with a 95% interval from resampling the same orders for both."""
+    y_true, p_a, p_b = (np.asarray(x, dtype=float) for x in (y_true, p_a, p_b))
+    rng = np.random.default_rng(seed)
+    differences = []
+    for _ in range(n_resamples):
+        i = rng.integers(0, len(y_true), len(y_true))
+        if 0 < y_true[i].sum() < len(i):
+            differences.append(metric(y_true[i], p_a[i]) - metric(y_true[i], p_b[i]))
+    low, high = np.percentile(differences, [2.5, 97.5])
+    return metric(y_true, p_a) - metric(y_true, p_b), float(low), float(high)

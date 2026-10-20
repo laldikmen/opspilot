@@ -11,6 +11,8 @@ MART = "ml_late_delivery_features"
 
 ID_COLUMNS = ["order_id", "purchase_date", "t0"]
 TARGET = "is_late"
+# When the label became known. Decides which rows a model may learn from; never a feature.
+OUTCOME_KNOWN_AT = "outcome_known_at"
 
 NUMERIC_FEATURES = [
     "promised_days",
@@ -42,9 +44,14 @@ FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 
 
 def load_features(db_path: Path = DUCKDB_PATH) -> pd.DataFrame:
-    """One row per labeled, uncensored order, oldest first."""
+    """One row per labeled, uncensored order, oldest first, with when its label became known."""
     con = duckdb.connect(str(db_path), read_only=True)
     try:
-        return con.sql(f"select * from {MART} order by t0, order_id").df()
+        return con.sql(f"""
+            select features.*, orders.{OUTCOME_KNOWN_AT}
+            from {MART} as features
+            inner join fct_orders as orders using (order_id)
+            order by features.t0, features.order_id
+        """).df()
     finally:
         con.close()

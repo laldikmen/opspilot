@@ -21,6 +21,11 @@ models:
           - accepted_values:
               arguments:
                 values: [0, 1]
+      - name: outcome_known_at
+        description: >
+          When the label became known: at delivery for an on-time order, at the
+          start of the day after the promised date for a late one. Used to keep
+          models from learning outcomes that were still unknown. Never a feature.
       - name: is_censored
         description: Purchased after the censoring cutoff.
         data_tests: [not_null]
