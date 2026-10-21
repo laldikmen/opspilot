@@ -10,7 +10,7 @@ from sklearn.impute import SimpleImputer
 from sklearn.pipeline import make_pipeline
 from sklearn.preprocessing import FunctionTransformer, OneHotEncoder, StandardScaler
 
-from opspilot.features.load import CATEGORICAL_FEATURES, NUMERIC_FEATURES
+from opspilot.features.load import CATEGORICAL_FEATURES, FEATURES
 
 # Long right tails; logged before scaling for linear models.
 SKEWED_FEATURES = [
@@ -28,12 +28,15 @@ SKEWED_FEATURES = [
 TOP_CATEGORIES = 20
 
 
-def build_preprocessor(scale: bool) -> ColumnTransformer:
+def build_preprocessor(scale: bool, features: list[str] = FEATURES) -> ColumnTransformer:
     """Median imputation for numbers, one-hot encoding of the top categories.
 
     scale=True also logs the long-tailed features and standardizes every number,
-    for linear models. Trees get the numbers as they are.
+    for linear models. Trees get the numbers as they are. `features` defaults to
+    the agreed feature list; experiments can pass a different one.
     """
+    numeric_features = [c for c in features if c not in CATEGORICAL_FEATURES]
+    categorical_features = [c for c in features if c in CATEGORICAL_FEATURES]
     categorical = make_pipeline(
         SimpleImputer(strategy="constant", fill_value="missing"),
         OneHotEncoder(
@@ -43,7 +46,8 @@ def build_preprocessor(scale: bool) -> ColumnTransformer:
         ),
     )
     if scale:
-        plain = [c for c in NUMERIC_FEATURES if c not in SKEWED_FEATURES]
+        skewed = [c for c in numeric_features if c in SKEWED_FEATURES]
+        plain = [c for c in numeric_features if c not in SKEWED_FEATURES]
         numeric = [
             (
                 "skewed",
@@ -52,15 +56,15 @@ def build_preprocessor(scale: bool) -> ColumnTransformer:
                     FunctionTransformer(np.log1p, feature_names_out="one-to-one"),
                     StandardScaler(),
                 ),
-                SKEWED_FEATURES,
+                skewed,
             ),
             ("numeric", make_pipeline(SimpleImputer(strategy="median"), StandardScaler()), plain),
         ]
     else:
-        numeric = [("numeric", SimpleImputer(strategy="median"), NUMERIC_FEATURES)]
+        numeric = [("numeric", SimpleImputer(strategy="median"), numeric_features)]
 
     preprocessor = ColumnTransformer(
-        [*numeric, ("categorical", categorical, CATEGORICAL_FEATURES)],
+        [*numeric, ("categorical", categorical, categorical_features)],
         verbose_feature_names_out=False,
     )
     return preprocessor.set_output(transform="pandas")

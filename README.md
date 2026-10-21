@@ -44,7 +44,7 @@ The decisions that shape everything else, with the numbers behind them
 1. [Target definition](docs/decisions/0001-target-definition.md): late means delivered after the promised calendar date; 6.77% of delivered orders.
 2. [Prediction time](docs/decisions/0002-prediction-time.md): features must be known when the order is approved.
 3. [Censoring cutoff](docs/decisions/0003-censoring-cutoff.md): the 10,201 labeled orders purchased after 2018-07-15 are dropped, because their slow deliveries are missing from the data.
-4. [Chronological split](docs/decisions/0004-chronological-split.md): train on 2017, validate on Q1 2018, test on April to mid-July 2018. Validation runs at three times the test late rate, so models are never selected on it alone.
+4. [Chronological split](docs/decisions/0004-chronological-split.md): train on 2017, validate on Q1 2018, test on April to mid-July 2018. Validation runs at three times the test late rate, so models are never selected on it alone, and every fit only learns from outcomes already known when it would be used.
 5. [Leakage rules](docs/decisions/0005-leakage-rules.md): nothing recorded after approval, and seller history only from orders already delivered.
 6. [Calibration under shift](docs/decisions/0006-calibration-under-shift.md): sigmoid calibration fitted on the pooled folds and validation, chosen by replaying each option one period back in time.
 

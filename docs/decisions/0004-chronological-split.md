@@ -1,6 +1,6 @@
 # 0004 · Chronological split
 
-Status: accepted · 2026-10-12 · revised 2026-10-13 and 2026-10-15 (see Changes)
+Status: accepted · 2026-10-12 · revised 2026-10-13, 2026-10-15 and 2026-10-21 (see Changes)
 
 ## Context
 
@@ -36,6 +36,12 @@ Split by purchase date, both ends inclusive:
   number averaged is **lift** (PR-AUC divided by that period's late rate), so
   the two high-late-rate periods do not dominate. ROC-AUC, top-10% recall and
   the Brier score are averaged alongside.
+- **Every fit only learns from outcomes known on the day it would be used.** An
+  outcome counts as known at delivery for an on-time order, and the day after
+  the promised date for a late one (`fct_orders.outcome_known_at`). Orders still
+  in transit on the first scored day are left out of that fit: 5% of train at
+  the validation start, none at the test start. Calibrators follow the same
+  rule ([0006](0006-calibration-under-shift.md)).
 - The test set is scored once, in Week 7, and the model is not changed after.
 
 The start and end of the window come from [0003](0003-censoring-cutoff.md).
@@ -61,10 +67,9 @@ a leak, but it has to be handled:
   teach seasonality; the model would only memorize the months of 2017.
 - Train contains one spike (November 2017), so the model has seen a bad month,
   but only one.
-- Every fit uses the labels of all orders purchased before the period it
-  scores, including orders that would still have been in transit on that
-  period's first day. A live system would not know those outcomes yet. This
-  flatters every model by a similar small amount and goes in the limitations.
+- Leaving out orders still in transit lowered every model's selection numbers
+  (mean lift: XGBoost 2.17 to 2.09, logistic regression 1.97 to 1.82). The
+  earlier numbers had learned from outcomes nobody could have known yet.
 
 ## Alternative considered
 
@@ -81,3 +86,6 @@ for a stable PR-AUC interval.
   `split.py`, `purchase_month` was dropped, and calibration became ADR 0006.
 - 2026-10-15: the fold dates were fixed and the selection number defined as
   mean lift across the folds and validation (Week 4).
+- 2026-10-21: fits and calibrators now only learn from outcomes known on the
+  first day of the period they are used for. Before, a fold could learn from
+  orders still in transit when its scored months began.

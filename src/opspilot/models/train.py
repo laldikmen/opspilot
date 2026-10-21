@@ -82,29 +82,30 @@ def xgboost(params: dict, n_estimators: int, **kwargs) -> XGBClassifier:
     )
 
 
-def fit_xgboost(fit: pd.DataFrame, params: dict) -> Pipeline:
+def fit_xgboost(fit: pd.DataFrame, params: dict, features: list[str] = FEATURES) -> Pipeline:
     """Find the number of trees on the latest rows of `fit`, then refit on all of them."""
     fit = fit.sort_values(["t0", "order_id"])
     cut = int(len(fit) * (1 - EARLY_STOPPING_HOLDOUT))
     early, late = fit.iloc[:cut], fit.iloc[cut:]
 
-    preprocessor = build_preprocessor(scale=False).fit(early[FEATURES])
+    preprocessor = build_preprocessor(scale=False, features=features).fit(early[features])
     probe = xgboost(params, MAX_ROUNDS, early_stopping_rounds=EARLY_STOPPING_ROUNDS)
     probe.fit(
-        preprocessor.transform(early[FEATURES]),
+        preprocessor.transform(early[features]),
         early[TARGET],
-        eval_set=[(preprocessor.transform(late[FEATURES]), late[TARGET])],
+        eval_set=[(preprocessor.transform(late[features]), late[TARGET])],
         verbose=False,
     )
     model = make_pipeline(
-        build_preprocessor(scale=False), xgboost(params, probe.best_iteration + 1)
+        build_preprocessor(scale=False, features=features),
+        xgboost(params, probe.best_iteration + 1),
     )
-    return model.fit(fit[FEATURES], fit[TARGET])
+    return model.fit(fit[features], fit[TARGET])
 
 
-def xgboost_fit_predict(params: dict) -> FitPredict:
+def xgboost_fit_predict(params: dict, features: list[str] = FEATURES) -> FitPredict:
     def fit_predict(fit: pd.DataFrame, score: pd.DataFrame):
-        return fit_xgboost(fit, params).predict_proba(score[FEATURES])[:, 1]
+        return fit_xgboost(fit, params, features).predict_proba(score[features])[:, 1]
 
     return fit_predict
 

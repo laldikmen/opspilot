@@ -41,13 +41,21 @@ def route_rate_rule(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
     return score["route_late_rate_smoothed"].fillna(fit[TARGET].mean()).to_numpy()
 
 
-def logistic_regression(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
-    model = make_pipeline(
-        build_preprocessor(scale=True),
-        LogisticRegression(max_iter=2000, random_state=RANDOM_SEED),
-    )
-    model.fit(fit[FEATURES], fit[TARGET])
-    return model.predict_proba(score[FEATURES])[:, 1]
+def logistic_regression_on(features: list[str]) -> FitPredict:
+    """Logistic regression with train-only preprocessing, on the given features."""
+
+    def fit_predict(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
+        model = make_pipeline(
+            build_preprocessor(scale=True, features=features),
+            LogisticRegression(max_iter=2000, random_state=RANDOM_SEED),
+        )
+        model.fit(fit[features], fit[TARGET])
+        return model.predict_proba(score[features])[:, 1]
+
+    return fit_predict
+
+
+logistic_regression = logistic_regression_on(FEATURES)
 
 
 BASELINES: dict[str, FitPredict] = {
