@@ -51,7 +51,7 @@ PROTOCOL_PATH = REPORTS_DIR / "test_protocol.md"
 # Fixed in reports/test_protocol.md before the test set was scored: for each
 # calibration source, the method with the lower backtest Brier score (ADR 0006).
 CALIBRATED = {
-    "xgboost_calibrated_validation": "last_isotonic",
+    "xgboost_calibrated_validation": "last_sigmoid",
     "xgboost_calibrated_pooled": "pooled_sigmoid",
 }
 FINAL = "xgboost_calibrated_pooled"

@@ -1,6 +1,6 @@
 # 0006 · Calibration under shift
 
-Status: accepted · 2026-10-15 · numbers updated 2026-10-21 (see Changes)
+Status: accepted · 2026-10-15 · numbers updated 2026-10-21 and 2026-10-26 (see Changes)
 
 ## Context
 
@@ -35,11 +35,11 @@ XGBoost, Brier score per period:
 
 | Strategy | Fold 2 | Fold 3 | Validation | Mean Brier | Mean ECE |
 | --- | ---: | ---: | ---: | ---: | ---: |
-| **Pooled, sigmoid** | 0.0405 | 0.0957 | 0.1031 | **0.0798** | **0.035** |
-| Last, isotonic | 0.0405 | 0.0954 | 0.1055 | 0.0805 | 0.043 |
-| Pooled, isotonic | 0.0405 | 0.0956 | 0.1065 | 0.0809 | 0.039 |
-| None | 0.0401 | 0.0962 | 0.1072 | 0.0812 | 0.050 |
-| Last, sigmoid | 0.0405 | 0.0955 | 0.1108 | 0.0823 | 0.051 |
+| **Pooled, sigmoid** | 0.0402 | 0.0959 | 0.1021 | **0.0794** | **0.037** |
+| Last, sigmoid | 0.0402 | 0.0960 | 0.1037 | 0.0800 | 0.043 |
+| Last, isotonic | 0.0403 | 0.0961 | 0.1044 | 0.0803 | 0.038 |
+| Pooled, isotonic | 0.0403 | 0.0960 | 0.1048 | 0.0804 | 0.041 |
+| None | 0.0400 | 0.0963 | 0.1086 | 0.0816 | 0.053 |
 
 `make train` regenerates this table in `reports/selection_tables.md`.
 
@@ -74,3 +74,7 @@ to calibrate on.
   they start being used ([0004](0004-chronological-split.md)), and the final
   model's parameters changed with the re-run search. The numbers above are from
   that re-run. The decision did not change.
+- 2026-10-26: re-run after two calendar-proxy features were dropped
+  ([0004](0004-chronological-split.md)). Pooled sigmoid is still best. For the
+  "last period" variant reported in Week 7, sigmoid now edges isotonic, so that
+  variant uses sigmoid.

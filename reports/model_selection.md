@@ -21,32 +21,33 @@ selection number is the mean lift across the four periods.
 | Prior (train late rate) | 1.00 | 1.00 | 1.00 | 1.00 | 1.00 | 0.500 | 10.0% |
 | Rule: seller smoothed late rate | 1.52 | 1.22 | 1.11 | 1.16 | 1.25 | 0.544 | 12.8% |
 | Rule: route late rate | 1.66 | 1.68 | 1.46 | 1.90 | 1.67 | 0.602 | 18.3% |
-| Logistic regression | 1.50 | 2.11 | 1.57 | 2.10 | 1.82 | 0.662 | 22.4% |
-| **XGBoost, tuned (final)** | **1.86** | **2.59** | **1.64** | **2.28** | **2.09** | **0.678** | **25.1%** |
+| Logistic regression | 1.60 | 2.24 | 1.59 | 2.15 | 1.89 | 0.666 | 23.0% |
+| **XGBoost, tuned (final)** | **1.88** | **2.69** | **1.66** | **2.35** | **2.15** | **0.686** | **26.8%** |
 
 ## Why XGBoost is the final candidate
 
-**It beats the strongest baselines on the agreed rule.** Mean lift is 2.09
-against 1.82 for logistic regression and 1.67 for the best one-feature rule. In
+**It beats the strongest baselines on the agreed rule.** Mean lift is 2.15
+against 1.89 for logistic regression and 1.67 for the best one-feature rule. In
 a paired bootstrap (1,000 resamples per period), its lead is clear where the
 periods are large:
 
 | Compared with | Fold 1 | Fold 2 | Fold 3 | Validation |
 | --- | --- | --- | --- | --- |
-| Logistic regression | +0.36 (−0.11 to +0.91) | +0.48 (+0.13 to +0.92) | +0.07 (−0.01 to +0.16) | +0.19 (+0.10 to +0.27) |
-| Rule: route late rate | +0.20 (−0.80 to +0.95) | +0.91 (+0.54 to +1.34) | +0.19 (+0.10 to +0.29) | +0.39 (+0.27 to +0.49) |
+| Logistic regression | +0.28 (−0.11 to +0.74) | +0.45 (+0.07 to +0.93) | +0.08 (−0.01 to +0.16) | +0.20 (+0.13 to +0.27) |
+| Rule: route late rate | +0.23 (−0.71 to +0.95) | +1.01 (+0.64 to +1.44) | +0.21 (+0.12 to +0.32) | +0.46 (+0.34 to +0.56) |
 
 Fold 1 is too small to tell (230 late orders). Elsewhere the intervals sit
 above zero or barely touch it.
 
-**It is not search luck.** XGBoost with default parameters already reaches
-1.88, ahead of logistic regression, and the three best of 40 trials all fall
-between 2.08 and 2.09.
+**Tuning matters here.** XGBoost with default parameters scores 1.84, just
+below logistic regression. The search moved it to 2.15, and the result is not a
+lucky draw: the three best of 40 trials fall between 2.10 and 2.15, all depth-2
+trees with a learning rate between 0.010 and 0.016.
 
-**What got it there was features, not tuning.** With the first 23 features,
-tuned XGBoost only tied logistic regression (1.91 against 1.90, measured before
-the label-timing fix). Four features describing the promise against what
-normally happens moved it ahead, all using only what was known at t0
+**What got it there was features.** With the first 23 features, tuned XGBoost
+only tied logistic regression (1.91 against 1.90, measured before the
+label-timing fix). Four features describing the promise against what normally
+happens moved it ahead, all using only what was known at t0
 ([ADR 0005](../docs/decisions/0005-leakage-rules.md)):
 
 - `route_mean_delivery_days` and `route_late_rate_smoothed`: how long deliveries
@@ -56,9 +57,15 @@ normally happens moved it ahead, all using only what was known at t0
 - `seller_mean_handover_days`: how long the seller usually took to hand an order
   to the carrier, over handovers before t0.
 
+Two features were then removed because they acted as calendars rather than
+seller traits: `seller_days_active` and `seller_past_delivered`. Inside any
+window of time they carry no signal, and the model was using them to tell late
+2017 from early 2017. Removing them raised both models slightly
+([ADR 0004](../docs/decisions/0004-chronological-split.md)). 25 features remain.
+
 **The route rule is the honest bar.** Ranking orders by their route's late rate
 needs no model at all and catches 18% of late orders in the riskiest 10%. The
-final model catches 25%: a real gain, though not a dramatic one. Most causes of
+final model catches 27%: a real gain, though not a dramatic one. Most causes of
 lateness (carrier capacity, weather, strikes) happen after approval and are not
 in the data.
 
@@ -67,7 +74,7 @@ in the data.
 `recent_late_rate_14d`, the plan's optional feature, was tested in two versions
 in [notebook 03](../notebooks/03_feature_experiments.ipynb): counting outcomes
 when the order was delivered, and when its outcome became known. Neither helps.
-Both lower the mean lift of both models (XGBoost from 2.09 to 2.02 and 1.98)
+Both lower the mean lift of both models (XGBoost from 2.15 to 2.05 and 2.01)
 because they trail a spike by weeks: a spike begins with orders whose promised
 day is still ahead.
 
@@ -75,8 +82,8 @@ day is still ahead.
 
 XGBoost with `max_depth` 2, `learning_rate` 0.0102, `min_child_weight` 3.12,
 `subsample` 0.66, `colsample_bytree` 0.77 and `reg_lambda` 2.56, with the number
-of trees set by early stopping. It is fitted on train (2017) and calibrated with
-a sigmoid fitted on the pooled folds and validation
+of trees set by early stopping, on 25 features. It is fitted on train (2017) and
+calibrated with a sigmoid fitted on the pooled folds and validation
 ([ADR 0006](../docs/decisions/0006-calibration-under-shift.md)). `make train`
 saves it, with its preprocessing, calibrator, feature list and version, to
 `artifacts/model_bundle.joblib`, and logs it as the `xgboost_final` MLflow run.
