@@ -30,9 +30,10 @@ def bundle(features):
 @pytest.fixture(scope="module")
 def calibrators(bundle, features):
     raw = bundle["model"].predict_proba(features[FEATURES])[:, 1]
+    kinds = {"isotonic": IsotonicCalibrator, "sigmoid": SigmoidCalibrator}
     return {
-        "last_isotonic": IsotonicCalibrator().fit(raw, features[TARGET]),
-        "pooled_sigmoid": SigmoidCalibrator().fit(raw, features[TARGET]),
+        strategy: kinds[strategy.split("_")[1]]().fit(raw, features[TARGET])
+        for strategy in CALIBRATED.values()
     }
 
 
