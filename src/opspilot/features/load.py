@@ -36,7 +36,6 @@ NUMERIC_FEATURES = [
     "n_payment_methods",
     "seller_past_delivered",
     "seller_late_rate_smoothed",
-    "seller_days_active",
     "seller_mean_handover_days",
 ]
 CATEGORICAL_FEATURES = ["main_category", "customer_state", "seller_state", "payment_type"]

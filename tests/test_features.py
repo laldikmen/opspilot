@@ -49,5 +49,4 @@ def test_features_have_sensible_ranges(warehouse):
     assert features.purchase_dow.between(1, 7).all()
     assert features.purchase_hour.between(0, 23).all()
     assert features.seller_late_rate_smoothed.between(0, 1).all()
-    assert (features.seller_days_active >= 0).all()
     assert (features.t0 >= pd.to_datetime(features.purchase_date)).all()

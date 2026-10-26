@@ -21,6 +21,8 @@ FORBIDDEN_COLUMNS = {
     "route_last_delivery_used_at",
     "route_past_late",
     "outcome_known_at",
+    # A calendar proxy rather than a seller trait (docs/decisions/0004).
+    "seller_days_active",
 }
 
 N_ORDERS = 50
@@ -30,7 +32,7 @@ def test_feature_table_has_exactly_the_agreed_columns(warehouse):
     # A new column fails here first, which forces the question "was it known at t0?"
     columns = [row[0] for row in warehouse.sql(f"describe {MART}").fetchall()]
     assert sorted(columns) == sorted(ID_COLUMNS + [TARGET] + FEATURES)
-    assert len(FEATURES) == 27
+    assert len(FEATURES) == 26
 
 
 def test_no_forbidden_column_is_a_feature(warehouse):

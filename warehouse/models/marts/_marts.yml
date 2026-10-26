@@ -33,7 +33,7 @@ models:
   - name: ml_late_delivery_features
     description: >
       The model input table. One row per labeled, uncensored order, with the
-      label, three identifying columns and 27 features known at t0.
+      label, three identifying columns and 26 features known at t0.
     columns:
       - name: order_id
         data_tests: [unique, not_null]

@@ -62,10 +62,13 @@ def markdown_table(frame: pd.DataFrame, digits: int = 3) -> str:
     frame = frame.reset_index() if frame.index.name else frame
     header = "| " + " | ".join(map(str, frame.columns)) + " |"
     rule = "| " + " | ".join("---" for _ in frame.columns) + " |"
-    body = [
-        "| " + " | ".join(f"{v:.{digits}f}" if isinstance(v, float) else str(v) for v in row) + " |"
-        for row in frame.itertuples(index=False)
-    ]
+
+    def cell(value) -> str:
+        if isinstance(value, float):
+            return "n/a" if np.isnan(value) else f"{value:.{digits}f}"
+        return str(value)
+
+    body = ["| " + " | ".join(cell(v) for v in row) + " |" for row in frame.itertuples(index=False)]
     return "\n".join([header, rule, *body])
 
 

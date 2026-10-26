@@ -22,7 +22,7 @@ help:
 	@echo "make features  build and test the feature tables, with the leakage check"
 	@echo "make train     fit the baselines and tune XGBoost on the folds and validation"
 	@echo "make mlflow    open the MLflow UI on http://127.0.0.1:5001"
-	@echo "make evaluate  score the test set and write reports/          (Week 7)"
+	@echo "make evaluate  score the test set once and write reports/evaluation.md"
 	@echo "make api       run the prediction API                         (Week 8)"
 	@echo "make all       data -> dbt -> features -> train -> evaluate"
 	@echo "make lint      ruff check + format check"
@@ -58,8 +58,9 @@ mlflow:
 # Later weeks replace these stubs. They fail loudly so `make all` cannot
 # look green before the pipeline exists.
 
+# Scores the test set: run once, after reports/test_protocol.md is committed.
 evaluate:
-	@echo "make evaluate: not implemented yet (Week 7)"; exit 1
+	uv run python -m opspilot.models.evaluate
 
 api:
 	@echo "make api: not implemented yet (Week 8)"; exit 1

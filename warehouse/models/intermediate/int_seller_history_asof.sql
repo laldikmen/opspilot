@@ -55,16 +55,6 @@ history as (
         and past.order_id != targets.order_id
     group by targets.order_id
 
-),
-
-first_order as (
-
-    select
-        seller_id,
-        min(purchased_at) as first_purchased_at
-    from seller_orders
-    group by seller_id
-
 )
 
 select
@@ -76,10 +66,7 @@ select
     -- Shrunk toward the prior, so a seller with two orders is not rated 0% or 100%.
     (history.seller_past_late + {{ strength }} * {{ prior }})
     / (history.seller_past_delivered + {{ strength }}) as seller_late_rate_smoothed,
-    -- The seller's first order is never later than this one, so it is known at t0.
-    date_diff('second', first_order.first_purchased_at, targets.t0) / 86400.0 as seller_days_active,
     -- Kept so that assert_seller_history_no_future can check the rule above.
     history.seller_last_delivery_used_at
 from targets
 inner join history on targets.order_id = history.order_id
-inner join first_order on targets.seller_id = first_order.seller_id

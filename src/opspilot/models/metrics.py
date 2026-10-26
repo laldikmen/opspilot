@@ -80,3 +80,22 @@ def paired_bootstrap(
             differences.append(metric(y_true[i], p_a[i]) - metric(y_true[i], p_b[i]))
     low, high = np.percentile(differences, [2.5, 97.5])
     return metric(y_true, p_a) - metric(y_true, p_b), float(low), float(high)
+
+
+def bootstrap_interval(
+    y_true, p, metric=pr_auc, n_resamples: int = 1000, seed: int = RANDOM_SEED
+) -> tuple[float, float]:
+    """95% interval of a metric from resampling the scored orders."""
+    y_true, p = np.asarray(y_true, dtype=float), np.asarray(p, dtype=float)
+    rng = np.random.default_rng(seed)
+    values = []
+    for _ in range(n_resamples):
+        i = rng.integers(0, len(y_true), len(y_true))
+        if 0 < y_true[i].sum() < len(i):
+            values.append(metric(y_true[i], p[i]))
+    low, high = np.percentile(values, [2.5, 97.5])
+    return float(low), float(high)
+
+
+def recall_top10(y_true, p) -> float:
+    return precision_recall_at_top(y_true, p)[1]

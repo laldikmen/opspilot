@@ -130,7 +130,6 @@ select
     -- The seller, as of t0
     seller_history.seller_past_delivered,
     seller_history.seller_late_rate_smoothed,
-    seller_history.seller_days_active,
     seller_handover.seller_mean_handover_days
 
 from orders
