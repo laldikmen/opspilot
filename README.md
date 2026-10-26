@@ -3,11 +3,31 @@
 Predicts which e-commerce orders will arrive late, using only what was known
 when the order was approved.
 
-> **Status:** work in progress. Weeks 1-5 of 9 are done: setup, EDA, design
-> decisions, a leakage-tested feature table, three baselines, and a tuned,
-> calibrated XGBoost chosen on validation data only
-> ([model selection](reports/model_selection.md)). The test set has not been
-> scored yet. `v1.0.0` is planned for 14 December 2026.
+> **Status:** work in progress. Weeks 1-7 of 9 are done: the warehouse, a
+> leakage-tested feature table, baselines, a tuned and calibrated XGBoost chosen
+> on validation data only, and a single pre-registered scoring of the test set.
+> The prediction API (Week 8) and release (Week 9) are next. `v1.0.0` is planned
+> for 14 December 2026.
+
+## Results
+
+Scored once on the test set (April to mid-July 2018, 21,949 orders, 4.05% late),
+after the model and the evaluation plan were committed in
+[reports/test_protocol.md](reports/test_protocol.md).
+
+- **Ranking works.** Checking the riskiest 10% of orders finds 28.6% of all late
+  orders, against 15.2% for ranking by the route's late rate and 10% at random
+  (PR-AUC 0.094 against a random 0.041).
+- **Logistic regression did better on test** (PR-AUC 0.116, 35.3% of late
+  orders in the riskiest 10%), although XGBoost had led on validation. The model
+  was not switched after seeing this; retraining XGBoost monthly closes the gap.
+- **Calibration drifted.** Probabilities fitted on periods running up to 13%
+  late came out about four times too high in a 4% period. Ranking held; the
+  level did not.
+
+Details: [evaluation](reports/evaluation.md), [model card](reports/model_card.md),
+[model selection](reports/model_selection.md),
+[error analysis](notebooks/02_error_analysis.ipynb).
 
 ## What v1 will be
 
