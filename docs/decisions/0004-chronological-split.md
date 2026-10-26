@@ -1,6 +1,6 @@
 # 0004 · Chronological split
 
-Status: accepted · 2026-10-12 · revised 2026-10-13, 2026-10-15 and 2026-10-21 (see Changes)
+Status: accepted · 2026-10-12 · revised 2026-10-13, 2026-10-15, 2026-10-21 and 2026-10-26 (see Changes)
 
 ## Context
 
@@ -65,6 +65,16 @@ a leak, but it has to be handled:
   to lean on.
 - `purchase_month` is dropped as a feature. One year of training data cannot
   teach seasonality; the model would only memorize the months of 2017.
+- For the same reason `seller_days_active` (days since the seller's first
+  order) was dropped. Inside a fixed stretch of time it carries no signal: from
+  January to September 2017 the late rate is 3.3% to 4.1% whatever the seller's
+  age, and 7.3% to 9.3% from October to December. Across time it correlates 0.47
+  with the purchase date, so the model was using it as a calendar.
+  `seller_past_delivered` (a running count of the seller's delivered orders)
+  went for the same reason: flat inside each window, 0.32 correlation with the
+  date. A scan of every numeric feature found no other such case. Without the
+  two, both models score slightly higher on the folds and validation. The
+  count still sets how much a seller's late rate is shrunk toward the prior.
 - Train contains one spike (November 2017), so the model has seen a bad month,
   but only one.
 - Leaving out orders still in transit lowered every model's selection numbers
@@ -89,3 +99,6 @@ for a stable PR-AUC interval.
 - 2026-10-21: fits and calibrators now only learn from outcomes known on the
   first day of the period they are used for. Before, a fold could learn from
   orders still in transit when its scored months began.
+- 2026-10-26: `seller_days_active` and `seller_past_delivered` dropped as
+  calendar proxies, found while checking the explanations in the evaluation
+  dry run on validation, before the test set was scored. 25 features remain.

@@ -20,7 +20,6 @@ SKEWED_FEATURES = [
     "total_weight_g",
     "total_volume_cm3",
     "distance_km",
-    "seller_past_delivered",
 ]
 
 # The most frequent values of each category are kept and the rest become

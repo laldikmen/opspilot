@@ -34,7 +34,6 @@ NUMERIC_FEATURES = [
     "route_late_rate_smoothed",
     "installments",
     "n_payment_methods",
-    "seller_past_delivered",
     "seller_late_rate_smoothed",
     "seller_mean_handover_days",
 ]
