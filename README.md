@@ -62,7 +62,7 @@ each retrained on outcomes known on the month's first day
   lift and ROC-AUC, so that is what the API serves.
 - **A second prediction at carrier handover** catches 36.5% of late orders against
   28.2% at approval, on the same 71,827 orders, in all 13 months. A typical flagged
-  order still has about two weeks left.
+  order still has about 18 days left.
 - **No calibrator.** A fix for v1's calibration flaw did not work: it always follows
   the recent past. Retraining alone cut the average prediction for April to July from
   17% to about 10%, against 4% actual. Percentages stay unreliable, so use the risk band.
