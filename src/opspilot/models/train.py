@@ -35,7 +35,7 @@ from opspilot.models.selection import (
     selection_summary,
 )
 from opspilot.models.selection_report import compare_models, write_selection_report
-from opspilot.models.split import final_period
+from opspilot.models.split import final_period, recency_weights
 from opspilot.models.tracking import git_commit, log_period_metrics, start_experiment
 
 N_TRIALS = 40
@@ -83,17 +83,24 @@ def xgboost(params: dict, n_estimators: int, **kwargs) -> XGBClassifier:
     )
 
 
-def fit_xgboost(fit: pd.DataFrame, params: dict, features: list[str] = FEATURES) -> Pipeline:
+def fit_xgboost(
+    fit: pd.DataFrame,
+    params: dict,
+    features: list[str] = FEATURES,
+    half_life_days: float | None = None,
+) -> Pipeline:
     """Find the number of trees on the latest rows of `fit`, then refit on all of them."""
     fit = fit.sort_values(["t0", "order_id"])
     cut = int(len(fit) * (1 - EARLY_STOPPING_HOLDOUT))
     early, late = fit.iloc[:cut], fit.iloc[cut:]
+    weights = recency_weights(fit, half_life_days)
 
     preprocessor = build_preprocessor(scale=False, features=features).fit(early[features])
     probe = xgboost(params, MAX_ROUNDS, early_stopping_rounds=EARLY_STOPPING_ROUNDS)
     probe.fit(
         preprocessor.transform(early[features]),
         early[TARGET],
+        sample_weight=None if weights is None else weights[:cut],
         eval_set=[(preprocessor.transform(late[features]), late[TARGET])],
         verbose=False,
     )
@@ -101,12 +108,15 @@ def fit_xgboost(fit: pd.DataFrame, params: dict, features: list[str] = FEATURES)
         build_preprocessor(scale=False, features=features),
         xgboost(params, probe.best_iteration + 1),
     )
-    return model.fit(fit[features], fit[TARGET])
+    return model.fit(fit[features], fit[TARGET], xgbclassifier__sample_weight=weights)
 
 
-def xgboost_fit_predict(params: dict, features: list[str] = FEATURES) -> FitPredict:
+def xgboost_fit_predict(
+    params: dict, features: list[str] = FEATURES, half_life_days: float | None = None
+) -> FitPredict:
     def fit_predict(fit: pd.DataFrame, score: pd.DataFrame):
-        return fit_xgboost(fit, params, features).predict_proba(score[features])[:, 1]
+        model = fit_xgboost(fit, params, features, half_life_days)
+        return model.predict_proba(score[features])[:, 1]
 
     return fit_predict
 

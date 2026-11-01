@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup data sample dbt features train mlflow evaluate api all lint test
+.PHONY: help setup data sample dbt features train mlflow evaluate api all lint test walk-forward
 
 ifneq (,$(wildcard .env))
 include .env
@@ -23,6 +23,7 @@ help:
 	@echo "make train     fit the baselines and tune XGBoost on the folds and validation"
 	@echo "make mlflow    open the MLflow UI on http://127.0.0.1:5001"
 	@echo "make evaluate  score the test set once and write reports/evaluation.md"
+	@echo "make walk-forward  v1.1: retrain month by month and compare models"
 	@echo "make api       run the prediction API on http://127.0.0.1:8000"
 	@echo "make all       data -> dbt -> features -> train -> evaluate"
 	@echo "make lint      ruff check + format check"
@@ -58,6 +59,9 @@ mlflow:
 # Scores the test set: run once, after reports/test_protocol.md is committed.
 evaluate:
 	uv run python -m opspilot.models.evaluate
+
+walk-forward:
+	uv run python -m opspilot.models.walk_forward
 
 # The API reads artifacts/ and the warehouse, so run `make features train` first.
 api:

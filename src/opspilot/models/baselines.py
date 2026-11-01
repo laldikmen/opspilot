@@ -20,6 +20,7 @@ from opspilot.models.selection import (
     predict_on_periods,
     selection_summary,
 )
+from opspilot.models.split import recency_weights
 from opspilot.models.tracking import git_commit, log_period_metrics, start_experiment
 
 
@@ -41,7 +42,7 @@ def route_rate_rule(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
     return score["route_late_rate_smoothed"].fillna(fit[TARGET].mean()).to_numpy()
 
 
-def logistic_regression_on(features: list[str]) -> FitPredict:
+def logistic_regression_on(features: list[str], half_life_days: float | None = None) -> FitPredict:
     """Logistic regression with train-only preprocessing, on the given features."""
 
     def fit_predict(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
@@ -49,7 +50,8 @@ def logistic_regression_on(features: list[str]) -> FitPredict:
             build_preprocessor(scale=True, features=features),
             LogisticRegression(max_iter=2000, random_state=RANDOM_SEED),
         )
-        model.fit(fit[features], fit[TARGET])
+        weights = recency_weights(fit, half_life_days)
+        model.fit(fit[features], fit[TARGET], logisticregression__sample_weight=weights)
         return model.predict_proba(score[features])[:, 1]
 
     return fit_predict

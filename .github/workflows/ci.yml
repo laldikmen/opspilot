@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "v1.*"]
   pull_request:
 
 jobs:
@@ -30,5 +30,6 @@ jobs:
           uv run python -m opspilot.models.baselines
           uv run python -m opspilot.models.train --trials 2
           uv run python -m opspilot.models.evaluate --split validation
+          uv run python -m opspilot.models.walk_forward
       - name: API image builds
         run: docker build -f docker/api.Dockerfile -t opspilot-api .

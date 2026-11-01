@@ -7,6 +7,7 @@ config edit (docs/decisions/0004-chronological-split.md).
 from dataclasses import dataclass
 from datetime import date, timedelta
 
+import numpy as np
 import pandas as pd
 
 from opspilot.config import FOLD_STARTS, SPLITS
@@ -79,3 +80,11 @@ def final_period() -> Period:
     train_start, train_end = SPLITS["train"]
     test_start, test_end = SPLITS["test"]
     return Period("test", train_start, train_end, test_start, test_end)
+
+
+def recency_weights(fit: pd.DataFrame, half_life_days: float | None) -> np.ndarray | None:
+    """Sample weights halving every `half_life_days` back from the latest row; None for equal."""
+    if half_life_days is None:
+        return None
+    age = (fit.t0.max() - fit.t0).dt.total_seconds() / 86400
+    return np.power(0.5, age.to_numpy() / half_life_days)
