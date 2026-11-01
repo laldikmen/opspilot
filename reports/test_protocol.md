@@ -4,6 +4,13 @@ Written and committed **before** the test set was scored, so the git history
 shows the model was fixed first. `make evaluate` recomputes the prediction
 fingerprint below and states in `reports/evaluation.md` whether it matches.
 
+> **Note on commit ids.** The commit ids in this file, in `evaluation.md` and
+> `selection_tables.md`, and in the model version `2026.10.26+01a157f` come from
+> before this repository's history was rewritten to change commit messages and
+> the author email, so they no longer exist here. Code, commit order and dates
+> are unchanged. This protocol is dated before the commit that adds the test
+> results, and the prediction fingerprint below still matches.
+
 ## What is frozen
 
 - Bundle `artifacts/model_bundle.joblib`, version `2026.10.26+01a157f`, built by
