@@ -34,3 +34,8 @@ jobs:
           uv run python -m opspilot.models.retrain
       - name: API image builds
         run: docker build -f docker/api.Dockerfile -t opspilot-api .
+      - name: API image loads the model
+        run: >
+          docker run --rm -v "$PWD/artifacts:/app/artifacts:ro" opspilot-api
+          python -c "from opspilot.config import SERVED_BUNDLE_PATH as p;
+          from opspilot.api.service import load_bundle; print(load_bundle(p)['version'])"

@@ -235,7 +235,7 @@ def fit_recipe(features: pd.DataFrame, params: dict, as_of: pd.Timestamp) -> Ave
     """The v1.1 model as of a date: both models on outcomes known by then, no calibrator."""
     fit = fit_rows(features, as_of)
     logistic = fit_logistic_regression(fit)
-    reference = logistic[0].transform(fit[FEATURES]).mean()
+    reference = logistic[0].transform(fit[FEATURES]).mean().to_numpy()
     return AveragedModel(logistic, fit_xgboost(fit, params), reference)
 
 

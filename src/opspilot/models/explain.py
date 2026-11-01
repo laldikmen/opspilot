@@ -35,13 +35,13 @@ def _tree_contributions(pipeline, features: list[str], rows: pd.DataFrame) -> pd
 
 
 def _linear_contributions(
-    pipeline, reference: pd.Series, features: list[str], rows: pd.DataFrame
+    pipeline, reference: np.ndarray, features: list[str], rows: pd.DataFrame
 ) -> pd.DataFrame:
     """Coefficient times distance from the fitted rows' mean: SHAP for a linear model."""
     preprocessor, model = pipeline[0], pipeline[-1]
     encoded = preprocessor.transform(rows[features])
     per_column = (encoded - reference) * model.coef_[0]
-    base = float(model.intercept_[0] + (reference.to_numpy() * model.coef_[0]).sum())
+    base = float(model.intercept_[0] + (reference * model.coef_[0]).sum())
     return _by_feature(per_column, features).assign(base=base)
 
 

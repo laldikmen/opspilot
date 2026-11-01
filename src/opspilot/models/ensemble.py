@@ -7,10 +7,11 @@ from sklearn.pipeline import Pipeline
 
 
 class AveragedModel:
-    def __init__(self, logistic: Pipeline, xgboost: Pipeline, reference: pd.Series):
+    def __init__(self, logistic: Pipeline, xgboost: Pipeline, reference: np.ndarray):
         self.logistic = logistic
         self.xgboost = xgboost
-        # Mean of the encoded fit rows; linear explanations are relative to it.
+        # Mean of the encoded fit rows; linear explanations are relative to it. A plain
+        # array, so loading the bundle needs nothing the API image does not have.
         self.reference = reference
 
     def predict_proba(self, rows: pd.DataFrame) -> np.ndarray:
