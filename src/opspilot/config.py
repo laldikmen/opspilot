@@ -50,6 +50,11 @@ FOLD_STARTS = [date(2017, 7, 1), date(2017, 9, 1), date(2017, 11, 1)]
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
 BUNDLE_PATH = ARTIFACTS_DIR / "model_bundle.joblib"
 
+# Every prediction the API serves is appended here.
+PREDICTION_LOG_PATH = Path(
+    os.environ.get("OPSPILOT_PREDICTION_LOG", REPO_ROOT / "logs" / "predictions.sqlite3")
+)
+
 # --- Experiment tracking -----------------------------------------------------
 MLFLOW_TRACKING_URI = os.environ.get("MLFLOW_TRACKING_URI", f"sqlite:///{REPO_ROOT / 'mlflow.db'}")
 MLFLOW_ARTIFACTS_DIR = REPO_ROOT / "mlruns"

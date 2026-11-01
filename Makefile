@@ -23,7 +23,7 @@ help:
 	@echo "make train     fit the baselines and tune XGBoost on the folds and validation"
 	@echo "make mlflow    open the MLflow UI on http://127.0.0.1:5001"
 	@echo "make evaluate  score the test set once and write reports/evaluation.md"
-	@echo "make api       run the prediction API                         (Week 8)"
+	@echo "make api       run the prediction API on http://127.0.0.1:8000"
 	@echo "make all       data -> dbt -> features -> train -> evaluate"
 	@echo "make lint      ruff check + format check"
 	@echo "make test      pytest"
@@ -55,15 +55,13 @@ train:
 mlflow:
 	uv run mlflow ui --backend-store-uri sqlite:///mlflow.db --port 5001
 
-# Later weeks replace these stubs. They fail loudly so `make all` cannot
-# look green before the pipeline exists.
-
 # Scores the test set: run once, after reports/test_protocol.md is committed.
 evaluate:
 	uv run python -m opspilot.models.evaluate
 
+# The API reads artifacts/ and the warehouse, so run `make features train` first.
 api:
-	@echo "make api: not implemented yet (Week 8)"; exit 1
+	uv run uvicorn opspilot.api.main:app --port 8000
 
 all: data dbt features train evaluate
 

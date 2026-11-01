@@ -1,1 +1,29 @@
-# Services: api + mlflow. Written in Week 8.
+# Run `make features train` first: the API serves artifacts/ and the warehouse.
+services:
+  api:
+    build:
+      context: .
+      dockerfile: docker/api.Dockerfile
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./artifacts:/app/artifacts:ro
+      - ./warehouse/opspilot.duckdb:/app/warehouse/opspilot.duckdb:ro
+      - prediction-logs:/app/logs
+
+  mlflow:
+    image: ghcr.io/mlflow/mlflow:v3.17.0
+    # The runs store absolute artifact paths, so mlruns/ keeps its host path.
+    command: >
+      mlflow ui --backend-store-uri sqlite:////mlflow/mlflow.db
+      --host 0.0.0.0 --port 5000
+    environment:
+      MLFLOW_DISABLE_TELEMETRY: "true"
+    ports:
+      - "5001:5000"
+    volumes:
+      - ./mlflow.db:/mlflow/mlflow.db
+      - ${PWD}/mlruns:${PWD}/mlruns:ro
+
+volumes:
+  prediction-logs:

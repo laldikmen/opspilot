@@ -3,11 +3,11 @@
 Predicts which e-commerce orders will arrive late, using only what was known
 when the order was approved.
 
-> **Status:** work in progress. Weeks 1-7 of 9 are done: the warehouse, a
+> **Status:** work in progress. Weeks 1-8 of 9 are done: the warehouse, a
 > leakage-tested feature table, baselines, a tuned and calibrated XGBoost chosen
-> on validation data only, and a single pre-registered scoring of the test set.
-> The prediction API (Week 8) and release (Week 9) are next. `v1.0.0` is planned
-> for 14 December 2026.
+> on validation data only, a single pre-registered scoring of the test set, and
+> a Dockerized prediction API. Release polish (Week 9) is next. `v1.0.0` is
+> planned for 14 December 2026.
 
 ## Results
 
@@ -29,6 +29,33 @@ after the model and the evaluation plan were committed in
 Details: [evaluation](reports/evaluation.md), [model card](reports/model_card.md),
 [model selection](reports/model_selection.md),
 [error analysis](notebooks/02_error_analysis.ipynb).
+
+## Use the API
+
+After `make features train`:
+
+```bash
+docker compose up --build
+```
+
+```bash
+curl -X POST localhost:8000/predict -H 'content-type: application/json' -d '{"order_id": "7af07887f8840085ae4b65cb52f4af29"}'
+```
+
+The response has the probability, a risk band, the model version and the top
+three reasons. Docs are at <http://localhost:8000/docs>, and the MLflow UI is at
+<http://localhost:5001>. `/explain` returns every feature's contribution,
+`/model-info` describes the model, and each prediction is appended to a log table
+for future monitoring.
+
+- **Read the band more than the percentage.** The bands were set on validation.
+  On test they still sorted orders well (low 1.8% late, medium 6.0%, high 12.0%),
+  but the probabilities themselves ran high ([why](docs/decisions/0006-calibration-under-shift.md)).
+- **This is batch scoring, not a live service.** `order_id` looks up features
+  already built in the warehouse, so it covers historical orders only. Sending
+  raw `features` works for any order, but the caller must supply history values
+  such as the route's late rate, which a real deployment would compute at request
+  time.
 
 ## What v1 will be
 

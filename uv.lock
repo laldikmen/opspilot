@@ -1963,17 +1963,13 @@ wheels = [
 name = "opspilot-ai"
 version = "0.1.0"
 source = { editable = "." }
+default-groups = ["dev", "pipeline"]
 dependencies = [
-    { name = "dbt-duckdb" },
     { name = "duckdb" },
     { name = "fastapi" },
-    { name = "kagglehub" },
-    { name = "matplotlib" },
-    { name = "mlflow" },
     { name = "pandas" },
     { name = "pydantic" },
     { name = "scikit-learn" },
-    { name = "shap" },
     { name = "uvicorn" },
     { name = "xgboost" },
 ]
@@ -1989,19 +1985,21 @@ dev = [
     { name = "pyyaml" },
     { name = "ruff" },
 ]
-
-[package.metadata]
-requires-dist = [
+pipeline = [
     { name = "dbt-duckdb" },
-    { name = "duckdb" },
-    { name = "fastapi" },
     { name = "kagglehub" },
     { name = "matplotlib" },
     { name = "mlflow" },
+    { name = "shap" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "duckdb" },
+    { name = "fastapi" },
     { name = "pandas" },
     { name = "pydantic" },
     { name = "scikit-learn" },
-    { name = "shap" },
     { name = "uvicorn" },
     { name = "xgboost" },
 ]
@@ -2016,6 +2014,13 @@ dev = [
     { name = "pytest" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "ruff" },
+]
+pipeline = [
+    { name = "dbt-duckdb" },
+    { name = "kagglehub" },
+    { name = "matplotlib" },
+    { name = "mlflow" },
+    { name = "shap" },
 ]
 
 [[package]]

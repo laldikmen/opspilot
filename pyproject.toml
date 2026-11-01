@@ -6,22 +6,26 @@ readme = "README.md"
 license = "MIT"
 authors = [{ name = "İnci Lal Dikmen" }]
 requires-python = "==3.11.*"
+# What serving a prediction needs; this is all the API image installs.
 dependencies = [
-    "dbt-duckdb",
     "duckdb",
     "fastapi",
-    "kagglehub",
-    "matplotlib",
-    "mlflow",
     "pandas",
     "pydantic",
     "scikit-learn",
-    "shap",
     "uvicorn",
     "xgboost",
 ]
 
 [dependency-groups]
+# Building the warehouse, training and evaluating.
+pipeline = [
+    "dbt-duckdb",
+    "kagglehub",
+    "matplotlib",
+    "mlflow",
+    "shap",
+]
 dev = [
     "httpx",
     "ipykernel",
@@ -32,6 +36,9 @@ dev = [
     "pyyaml>=6.0.3",
     "ruff",
 ]
+
+[tool.uv]
+default-groups = ["dev", "pipeline"]
 
 [build-system]
 requires = ["hatchling"]

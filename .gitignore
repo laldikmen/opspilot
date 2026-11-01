@@ -5,6 +5,7 @@ data/raw/*
 *.duckdb.wal
 mlruns/
 mlartifacts/
+/logs/
 mlflow.db
 artifacts/
 
