@@ -1,6 +1,6 @@
 # 0006 · Calibration under shift
 
-Status: accepted · 2026-10-15 · numbers updated 2026-10-21 and 2026-10-26 (see Changes)
+Status: accepted · 2026-10-15 · numbers updated 2026-10-21 and 2026-10-26 · outcome added (see What happened on test)
 
 ## Context
 
@@ -52,13 +52,39 @@ calibrating on validation alone. On the last-period option, isotonic and sigmoid
 swap places between runs, which is another sign that one period is too little
 to calibrate on.
 
+## What happened on test
+
+Calibrated probabilities averaged 17.2% against a 4.05% late rate. The shift
+explains part of that, but the decision above also had a design flaw that the
+backtest could not show: **the calibrator was fitted on one kind of model and
+applied to another.**
+
+| Step | Mean prediction | Actual late rate |
+| --- | ---: | ---: |
+| Earlier-period models, on the calibrator's rows | 3.8% | 7.9% |
+| The fitted sigmoid | about doubles a raw score (5% becomes 10.7%, 9% becomes 17.5%) | |
+| Final model, uncalibrated, on test | 9.2% | 4.05% |
+| Final model, calibrated, on test | 17.2% | 4.05% |
+
+The earlier-period models read low, so the calibrator learned to push scores up.
+The final model read higher to begin with. Under the known-outcome rule
+([0004](0004-chronological-split.md)) it trained on 2,165 December 2017 orders
+the validation-period model never saw, because their outcomes were unknown on 1
+January. Those orders ran 16.6% late, and on the same validation orders they
+lift the mean prediction from 5.9% to 8.1%. Doubling that higher reading produced
+the 17%.
+
+The uncalibrated model was still about twice too high, so the shift is real, but
+the calibrator made it worse. The frozen model was not changed. v1.1 tests a fix:
+correcting only the overall level, from the same kind of model it will be applied
+to.
+
 ## Consequences
 
 - The margins are small, and every step in the backtest went from a lower late
-  rate to a higher one. Test goes the other way: 4.05% after a 12.9% quarter,
-  against a calibration set at 7.9%. Calibrated probabilities are therefore
-  expected to run high on test. That is the prevalence shift, not a bug, and it
-  is what the README section "Calibration under prevalence shift" will discuss.
+  rate to a higher one. Test went the other way: 4.05% after a 12.9% quarter.
+  Calibrated probabilities were expected to run high on test, though not by this
+  much; see above.
 - Calibration is monotone, so ranking metrics (PR-AUC, ROC-AUC, top-10% recall)
   do not depend on this choice. Only the Brier score and ECE do.
 - In Week 7 all three options are still scored on test and reported side by

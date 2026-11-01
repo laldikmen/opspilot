@@ -47,18 +47,18 @@ Full details: [evaluation](reports/evaluation.md),
 ## Calibration under prevalence shift
 
 The late rate moves a lot: 13% on validation, 4% on test, and between 1% and 19%
-month to month. A calibrator learns the base rate of the data it sees, so
-probabilities calibrated on 2017 and early 2018 came out about four times too high
-on the calm test period (17.2% predicted on average, 4.05% actual).
+month to month. Probabilities came out about four times too high on the calm test
+period (17.2% predicted on average, 4.05% actual). Part of that is the shift. Part
+is a design flaw found afterwards: the calibrator learned from earlier-period
+models that read low, then doubled a final model that already read higher.
 
 ![Calibration on validation and test](reports/figures/calibration.png)
 
 Ranking held and calibration drifted: each risk decile is still riskier than the
-one before, but every level sits too high. Better static calibration cannot fix
-this, because no calibrator knows the next period's late rate. The fix is to
-monitor predicted against observed late rate and recalibrate, which is why the API
-logs every prediction and why v2 adds drift monitoring. The comparison of
-calibration options is in [ADR 0006](docs/decisions/0006-calibration-under-shift.md).
+one before, but every level sits too high. Even a sound calibrator cannot know the
+next period's late rate, so the lasting fix is to monitor predicted against
+observed late rate and recalibrate, which is why the API logs every prediction.
+The full account is in [ADR 0006](docs/decisions/0006-calibration-under-shift.md).
 
 ## How it works
 

@@ -75,8 +75,12 @@ settle which period the future would resemble.
 
 **Calibration.** The probabilities run about four times too high on test: a mean prediction of 17.2% against a 4.05% late rate, an ECE of 0.131,
 and a worse Brier score than predicting the train late rate for everyone. This
-is the prevalence shift that ADR 0006 expected: the calibrator learned from
-periods running at 2.9% to 12.9% late, and test ran at 4.05%. The model still
+has two causes. The test period was calm after a bad quarter, and the calibrator
+was fitted on earlier-period models that read low, so it roughly doubles scores,
+while the final model already read higher (9.2% uncalibrated). The second cause
+is a design flaw, explained in
+[ADR 0006](../docs/decisions/0006-calibration-under-shift.md#what-happened-on-test).
+The model still
 orders risk correctly within test (see the calibration figure in
 [evaluation.md](evaluation.md)), but the level drifted.
 
