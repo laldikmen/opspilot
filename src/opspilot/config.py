@@ -53,6 +53,7 @@ BUNDLE_PATH = ARTIFACTS_DIR / "model_bundle.joblib"  # the frozen v1 model
 SERVED_BUNDLE_PATH = Path(
     os.environ.get("OPSPILOT_BUNDLE_PATH", ARTIFACTS_DIR / "v1.1" / "model_bundle.joblib")
 )
+SERVED_HANDOVER_BUNDLE_PATH = SERVED_BUNDLE_PATH.with_name("handover_bundle.joblib")
 
 # Every prediction the API serves is appended here.
 PREDICTION_LOG_PATH = Path(

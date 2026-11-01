@@ -3,6 +3,7 @@
 import sqlite3
 
 import numpy as np
+import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
@@ -10,11 +11,17 @@ from opspilot.api.main import create_app
 from opspilot.api.prediction_log import input_hash
 from opspilot.api.schemas import OrderFeatures
 from opspilot.api.service import HIGH_RISK, MEDIUM_RISK, risk_band
-from opspilot.features.load import FEATURES, TARGET
+from opspilot.features.load import (
+    FEATURES,
+    HANDOVER_FEATURES,
+    TARGET,
+    load_handover_features,
+)
 from opspilot.models.bundle import build_bundle, save_bundle
 from opspilot.models.calibrate import SigmoidCalibrator
 from opspilot.models.split import assign_split
 from opspilot.models.train import DEFAULT_PARAMS, fit_xgboost
+from opspilot.models.walk_forward import fit_recipe
 
 
 @pytest.fixture(scope="module")
@@ -30,7 +37,18 @@ def client(features, warehouse_path, tmp_path_factory, log_path):
     calibrator = SigmoidCalibrator().fit(raw, train[TARGET])
     bundle = build_bundle(model, calibrator, "pooled_sigmoid", DEFAULT_PARAMS, "0" * 40)
     path = save_bundle(bundle, tmp_path_factory.mktemp("bundle") / "bundle.joblib")
-    with TestClient(create_app(path, warehouse_path, log_path)) as test_client:
+    handover = load_handover_features(warehouse_path)
+    open_orders = features.merge(handover, on="order_id")
+    names = FEATURES + HANDOVER_FEATURES
+    as_of = pd.Timestamp("2018-09-01")
+    second = {
+        "model": fit_recipe(open_orders, DEFAULT_PARAMS, as_of, names),
+        "calibrator": None,
+        "features": names,
+        "version": "test-handover",
+    }
+    second_path = save_bundle(second, path.with_name("handover.joblib"))
+    with TestClient(create_app(path, warehouse_path, log_path, second_path)) as test_client:
         yield test_client
 
 
@@ -69,7 +87,14 @@ def test_health_and_model_info(client):
 
 def test_predict_by_order_id_has_the_agreed_shape(client, order):
     body = client.post("/predict", json={"order_id": order.order_id}).json()
-    assert set(body) == {"order_id", "probability", "risk_band", "model_version", "reasons"}
+    assert set(body) == {
+        "order_id",
+        "stage",
+        "probability",
+        "risk_band",
+        "model_version",
+        "reasons",
+    }
     assert 0 < body["probability"] < 1
     assert body["risk_band"] == risk_band(body["probability"])
     assert len(body["reasons"]) == 3
@@ -147,7 +172,7 @@ def test_every_prediction_is_logged(client, order, log_path):
             "select endpoint, order_id, model_version, probability, input_hash "
             "from predictions order by rowid desc limit 2"
         ).fetchall()
-    assert logged[1][:3] == ("predict", order.order_id, body["model_version"])
+    assert logged[1][:3] == ("predict:approval", order.order_id, body["model_version"])
     assert logged[1][3] == pytest.approx(body["probability"])
     assert logged[0][4] == logged[1][4]
 
@@ -169,3 +194,26 @@ def test_risk_bands():
     assert risk_band(HIGH_RISK) == "high"
     assert risk_band(MEDIUM_RISK) == "medium"
     assert risk_band(MEDIUM_RISK - 0.001) == "low"
+
+
+def test_handover_stage_scores_an_open_order(client, warehouse):
+    order_id = warehouse.sql("select order_id from ml_handover_features limit 1").fetchone()[0]
+    body = client.post("/predict", json={"order_id": order_id, "stage": "handover"}).json()
+    assert body["stage"] == "handover"
+    assert body["model_version"] == "test-handover"
+    assert all(reason["feature"] in FEATURES + HANDOVER_FEATURES for reason in body["reasons"])
+
+
+def test_handover_stage_needs_an_order_id(client, order):
+    request = {"features": payload(order), "stage": "handover"}
+    assert client.post("/predict", json=request).status_code == 422
+
+
+def test_order_not_open_at_handover_is_a_404(client, warehouse):
+    closed = warehouse.sql("""
+        select order_id from ml_late_delivery_features
+        where order_id not in (select order_id from ml_handover_features) limit 1
+    """).fetchone()
+    if closed:
+        request = {"order_id": closed[0], "stage": "handover"}
+        assert client.post("/predict", json=request).status_code == 404

@@ -31,6 +31,7 @@ jobs:
           uv run python -m opspilot.models.train --trials 2
           uv run python -m opspilot.models.evaluate --split validation
           uv run python -m opspilot.models.walk_forward
+          uv run python -m opspilot.models.handover
           uv run python -m opspilot.models.retrain
       - name: API image builds
         run: docker build -f docker/api.Dockerfile -t opspilot-api .

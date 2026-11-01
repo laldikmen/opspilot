@@ -231,21 +231,25 @@ def fit_rows(features: pd.DataFrame, as_of: pd.Timestamp) -> pd.DataFrame:
     return rows[known_before(rows, as_of)]
 
 
-def fit_recipe(features: pd.DataFrame, params: dict, as_of: pd.Timestamp) -> AveragedModel:
+def fit_recipe(
+    rows: pd.DataFrame, params: dict, as_of: pd.Timestamp, features: list[str] = FEATURES
+) -> AveragedModel:
     """The v1.1 model as of a date: both models on outcomes known by then, no calibrator."""
-    fit = fit_rows(features, as_of)
-    logistic = fit_logistic_regression(fit)
-    reference = logistic[0].transform(fit[FEATURES]).mean().to_numpy()
-    return AveragedModel(logistic, fit_xgboost(fit, params), reference)
+    fit = fit_rows(rows, as_of)
+    logistic = fit_logistic_regression(fit, features)
+    reference = logistic[0].transform(fit[features]).mean().to_numpy()
+    return AveragedModel(logistic, fit_xgboost(fit, params, features), reference)
 
 
-def cutoffs_for(model: AveragedModel, features: pd.DataFrame, as_of: pd.Timestamp) -> dict | None:
+def cutoffs_for(
+    model: AveragedModel, rows: pd.DataFrame, as_of: pd.Timestamp, features: list[str] = FEATURES
+) -> dict | None:
     """Rank the last 90 days of orders with this same model. This needs no outcomes."""
-    dates = pd.to_datetime(features.purchase_date)
-    recent = features[dates.between(as_of - pd.Timedelta(days=90), as_of, inclusive="left")]
+    dates = pd.to_datetime(rows.purchase_date)
+    recent = rows[dates.between(as_of - pd.Timedelta(days=90), as_of, inclusive="left")]
     if len(recent) < MIN_LEVEL_ROWS:
         return None
-    return band_cutoffs(model.predict_proba(recent[FEATURES])[:, 1])
+    return band_cutoffs(model.predict_proba(recent[features])[:, 1])
 
 
 def band_check(features: pd.DataFrame, params: dict) -> pd.DataFrame:

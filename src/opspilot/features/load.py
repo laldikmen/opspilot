@@ -40,6 +40,15 @@ NUMERIC_FEATURES = [
 CATEGORICAL_FEATURES = ["main_category", "customer_state", "seller_state", "payment_type"]
 FEATURES = NUMERIC_FEATURES + CATEGORICAL_FEATURES
 
+# Known only once the seller has handed the order to the carrier (v1.1).
+HANDOVER_MART = "ml_handover_features"
+HANDOVER_FEATURES = [
+    "handover_delay_days",
+    "handover_vs_usual_days",
+    "days_left",
+    "carrier_slack_days",
+]
+
 
 def load_features(db_path: Path = DUCKDB_PATH) -> pd.DataFrame:
     """One row per labeled, uncensored order, oldest first, with when its label became known."""
@@ -51,5 +60,14 @@ def load_features(db_path: Path = DUCKDB_PATH) -> pd.DataFrame:
             inner join fct_orders as orders using (order_id)
             order by features.t0, features.order_id
         """).df()
+    finally:
+        con.close()
+
+
+def load_handover_features(db_path: Path = DUCKDB_PATH) -> pd.DataFrame:
+    """The orders still open at carrier handover, with the features known by then."""
+    con = duckdb.connect(str(db_path), read_only=True)
+    try:
+        return con.sql(f"select * from {HANDOVER_MART}").df()
     finally:
         con.close()

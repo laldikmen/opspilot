@@ -1,5 +1,5 @@
 .DEFAULT_GOAL := help
-.PHONY: help setup data sample dbt features train mlflow evaluate api all lint test walk-forward retrain
+.PHONY: help setup data sample dbt features train mlflow evaluate api all lint test walk-forward retrain handover v1.1
 
 ifneq (,$(wildcard .env))
 include .env
@@ -24,6 +24,7 @@ help:
 	@echo "make mlflow    open the MLflow UI on http://127.0.0.1:5001"
 	@echo "make evaluate  score the test set once and write reports/evaluation.md"
 	@echo "make walk-forward  v1.1: retrain month by month and compare models"
+	@echo "make handover  v1.1: compare predicting at approval and at carrier handover"
 	@echo "make retrain   v1.1: refit the served model (add ARGS=\"--as-of YYYY-MM-DD\")"
 	@echo "make api       run the prediction API on http://127.0.0.1:8000"
 	@echo "make all       data -> dbt -> features -> train -> evaluate"
@@ -64,6 +65,9 @@ evaluate:
 walk-forward:
 	uv run python -m opspilot.models.walk_forward
 
+handover:
+	uv run python -m opspilot.models.handover
+
 retrain:
 	uv run python -m opspilot.models.retrain $(ARGS)
 
@@ -72,6 +76,9 @@ api:
 	uv run uvicorn opspilot.api.main:app --port 8000
 
 all: data dbt features train evaluate
+
+# Everything v1.1 adds, after `make all`.
+v1.1: walk-forward handover retrain
 
 lint:
 	uv run ruff check .

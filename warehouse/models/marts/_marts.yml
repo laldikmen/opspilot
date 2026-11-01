@@ -53,3 +53,23 @@ models:
         data_tests: [not_null]
       - name: seller_late_rate_smoothed
         data_tests: [not_null]
+
+  - name: ml_handover_features
+    description: >
+      Extra features known when the seller hands the order to the carrier, for
+      orders not already known to be late or delivered by then. v1.1.
+    columns:
+      - name: order_id
+        data_tests:
+          - unique
+          - not_null
+          - relationships:
+              arguments:
+                to: ref('ml_late_delivery_features')
+                field: order_id
+      - name: scored_at
+        data_tests: [not_null]
+      - name: handover_delay_days
+        data_tests: [not_null]
+      - name: days_left
+        data_tests: [not_null]

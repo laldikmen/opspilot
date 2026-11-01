@@ -1,5 +1,7 @@
 """Pydantic request and response models."""
 
+from typing import Literal
+
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
@@ -46,11 +48,17 @@ class PredictRequest(BaseModel):
 
     order_id: str | None = None
     features: OrderFeatures | None = None
+    stage: Literal["approval", "handover"] = Field(
+        default="approval",
+        description="handover uses what is known once the seller has shipped; needs order_id",
+    )
 
     @model_validator(mode="after")
     def exactly_one_input(self) -> "PredictRequest":
         if (self.order_id is None) == (self.features is None):
             raise ValueError("send exactly one of order_id or features")
+        if self.stage == "handover" and self.order_id is None:
+            raise ValueError("the handover stage needs an order_id")
         return self
 
 
@@ -62,6 +70,7 @@ class Reason(BaseModel):
 
 class PredictResponse(BaseModel):
     order_id: str | None
+    stage: str
     probability: float = Field(description="Calibrated probability of arriving late")
     risk_band: str = Field(description="high, medium or low")
     model_version: str
@@ -70,6 +79,7 @@ class PredictResponse(BaseModel):
 
 class ExplainResponse(BaseModel):
     order_id: str | None
+    stage: str
     probability: float
     model_version: str
     base_value: float = Field(description="The model's starting point, in log-odds")
