@@ -11,38 +11,20 @@ import pandas as pd
 
 from opspilot.config import OBSERVATION_END, SERVED_BUNDLE_PATH, SPLITS
 from opspilot.features.load import FEATURES, load_features
-from opspilot.models.baselines import fit_logistic_regression
 from opspilot.models.bundle import load_bundle, save_bundle
-from opspilot.models.ensemble import AveragedModel
-from opspilot.models.split import known_before
 from opspilot.models.tracking import git_commit
-from opspilot.models.train import fit_xgboost
-from opspilot.models.walk_forward import band_cutoffs, recent_scores, run
-
-
-def fit_rows(features: pd.DataFrame, as_of: pd.Timestamp) -> pd.DataFrame:
-    dates = pd.to_datetime(features.purchase_date)
-    rows = features[(dates >= pd.Timestamp(SPLITS["train"][0])) & (dates < as_of)]
-    return rows[known_before(rows, as_of)]
-
-
-def fit_recipe(features: pd.DataFrame, params: dict, as_of: pd.Timestamp) -> AveragedModel:
-    fit = fit_rows(features, as_of)
-    logistic = fit_logistic_regression(fit)
-    reference = logistic[0].transform(fit[FEATURES]).mean()
-    return AveragedModel(logistic, fit_xgboost(fit, params), reference)
+from opspilot.models.walk_forward import cutoffs_for, fit_recipe
 
 
 def build_bundle(features: pd.DataFrame, params: dict, as_of: pd.Timestamp) -> dict:
-    scored = run(features, params)
-    average = scored[scored.model == "average"]
+    model = fit_recipe(features, params, as_of)
     commit = git_commit()
     return {
         "version": f"1.1-{as_of:%Y-%m-%d}+{commit[:7]}",
-        "model": fit_recipe(features, params, as_of),
+        "model": model,
         "calibrator": None,
         "calibration": "none",
-        "risk_bands": band_cutoffs(recent_scores(average, as_of)),
+        "risk_bands": cutoffs_for(model, features, as_of),
         "features": list(FEATURES),
         "params": params,
         "train_period": f"{SPLITS['train'][0]} to {as_of:%Y-%m-%d}, known outcomes only",

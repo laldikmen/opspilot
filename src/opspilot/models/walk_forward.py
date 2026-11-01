@@ -18,15 +18,20 @@ from scipy.special import expit, logit
 
 from opspilot.config import FOLD_STARTS, RANDOM_SEED, REPORTS_DIR, SPLITS
 from opspilot.features.load import FEATURES, OUTCOME_KNOWN_AT, TARGET, load_features
-from opspilot.models.baselines import logistic_regression_on, route_rate_rule
+from opspilot.models.baselines import (
+    fit_logistic_regression,
+    logistic_regression_on,
+    route_rate_rule,
+)
 from opspilot.models.bundle import load_bundle
 from opspilot.models.calibrate import SigmoidCalibrator
+from opspilot.models.ensemble import AveragedModel
 from opspilot.models.evaluate import AQUA, BLUE, GRAY, INK, ORANGE, _save, plt
 from opspilot.models.metrics import brier, expected_calibration_error, lift, recall_top10, roc_auc
 from opspilot.models.selection_report import markdown_table
 from opspilot.models.split import known_before
 from opspilot.models.tracking import git_commit
-from opspilot.models.train import xgboost_fit_predict
+from opspilot.models.train import fit_xgboost, xgboost_fit_predict
 
 OUT_DIR = REPORTS_DIR / "v1.1"
 TEST_START = pd.Timestamp(SPLITS["test"][0])
@@ -220,36 +225,53 @@ def band_cutoffs(scores: np.ndarray) -> dict[str, float]:
     return {"high": float(np.quantile(scores, 0.9)), "medium": float(np.quantile(scores, 0.7))}
 
 
-def recent_scores(history: pd.DataFrame, start: pd.Timestamp) -> np.ndarray:
-    """Scores from the 90 days before `start`. They need no outcomes, so they do not lag."""
-    dates = pd.to_datetime(history.purchase_date)
-    return history.p[
-        dates.between(start - pd.Timedelta(days=90), start, inclusive="left")
-    ].to_numpy()
+def fit_rows(features: pd.DataFrame, as_of: pd.Timestamp) -> pd.DataFrame:
+    dates = pd.to_datetime(features.purchase_date)
+    rows = features[(dates >= pd.Timestamp(SPLITS["train"][0])) & (dates < as_of)]
+    return rows[known_before(rows, as_of)]
 
 
-def band_check(predictions: pd.DataFrame, model: str = "average") -> pd.DataFrame:
-    """Cut-offs from the 90 days before each month, applied to that month."""
-    rows = predictions[predictions.model == model]
+def fit_recipe(features: pd.DataFrame, params: dict, as_of: pd.Timestamp) -> AveragedModel:
+    """The v1.1 model as of a date: both models on outcomes known by then, no calibrator."""
+    fit = fit_rows(features, as_of)
+    logistic = fit_logistic_regression(fit)
+    reference = logistic[0].transform(fit[FEATURES]).mean()
+    return AveragedModel(logistic, fit_xgboost(fit, params), reference)
+
+
+def cutoffs_for(model: AveragedModel, features: pd.DataFrame, as_of: pd.Timestamp) -> dict | None:
+    """Rank the last 90 days of orders with this same model. This needs no outcomes."""
+    dates = pd.to_datetime(features.purchase_date)
+    recent = features[dates.between(as_of - pd.Timedelta(days=90), as_of, inclusive="left")]
+    if len(recent) < MIN_LEVEL_ROWS:
+        return None
+    return band_cutoffs(model.predict_proba(recent[FEATURES])[:, 1])
+
+
+def band_check(features: pd.DataFrame, params: dict) -> pd.DataFrame:
+    """Each month: fit the recipe on its first day, set cut-offs, apply them to that month."""
+    dates = pd.to_datetime(features.purchase_date)
+    cutoff = pd.Timestamp(SPLITS["test"][1])
     table = []
-    for month, part in rows.groupby("month", sort=True):
-        start = pd.Period(month, freq="M").start_time
-        earlier = recent_scores(rows[rows.month < month], start)
-        if len(earlier) < MIN_LEVEL_ROWS:
+    for month in months():
+        start, end = month.start_time, min(month.end_time.normalize(), cutoff)
+        model = fit_recipe(features, params, start)
+        cuts = cutoffs_for(model, features, start)
+        if cuts is None:
             continue
-        cutoffs = band_cutoffs(earlier)
-        high, medium = part.p >= cutoffs["high"], part.p >= cutoffs["medium"]
+        part = features[dates.between(start, end)]
+        p, y = model.predict_proba(part[FEATURES])[:, 1], part[TARGET].to_numpy()
+        high, medium = p >= cuts["high"], (p >= cuts["medium"]) & (p < cuts["high"])
+        low = p < cuts["medium"]
         table.append(
             {
-                "month": month,
-                "late rate": part.y.mean(),
+                "month": str(month),
+                "late rate": y.mean(),
                 "share high": high.mean(),
-                "late in high": part.y[high].mean() if high.any() else np.nan,
-                "share medium": (medium & ~high).mean(),
-                "late in medium": part.y[medium & ~high].mean()
-                if (medium & ~high).any()
-                else np.nan,
-                "late in low": part.y[~medium].mean(),
+                "late in high": y[high].mean() if high.any() else np.nan,
+                "share medium": medium.mean(),
+                "late in medium": y[medium].mean() if medium.any() else np.nan,
+                "late in low": y[low].mean() if low.any() else np.nan,
             }
         )
     return pd.DataFrame(table)
@@ -303,7 +325,7 @@ def figure_level(levels: pd.DataFrame, path) -> None:
     _save(fig, path)
 
 
-def write_report(predictions: pd.DataFrame) -> None:
+def write_report(predictions: pd.DataFrame, bands: pd.DataFrame) -> None:
     monthly = monthly_ranking(predictions)
     months_shown = monthly[monthly.model.isin(["xgboost", "logistic_regression", "route_rule"])]
     recall = months_shown.pivot(index="month", columns="model", values="recall_top10")
@@ -359,16 +381,16 @@ def write_report(predictions: pd.DataFrame) -> None:
         markdown_table(levels.rename_axis("month"), digits=3),
         "## Risk bands",
         "The served recipe is the average of both models, retrained monthly, with no "
-        "calibrator. Its bands rank each month against the scores of the 90 days before it: "
-        "high is their top 10%, medium the next 20%.",
-        markdown_table(band_check(predictions)),
+        "calibrator. On its first day each month's model scores the previous 90 days of orders; "
+        "high is their top 10%, medium the next 20%. No outcomes are needed.",
+        markdown_table(bands),
     ]
     (OUT_DIR / "walk_forward.md").write_text("\n\n".join(sections) + "\n")
 
 
 def main() -> None:
-    predictions = with_corrections(run(load_features(), load_bundle()["params"]))
-    write_report(predictions)
+    features, params = load_features(), load_bundle()["params"]
+    write_report(with_corrections(run(features, params)), band_check(features, params))
     print(f"Wrote {OUT_DIR / 'walk_forward.md'}")
 
 

@@ -8,13 +8,14 @@ from scipy.special import expit, logit
 from opspilot.features.load import FEATURES
 from opspilot.models.bundle import predict_proba
 from opspilot.models.explain import contributions, top_reasons
-from opspilot.models.retrain import fit_recipe, fit_rows
 from opspilot.models.split import recency_weights
 from opspilot.models.train import DEFAULT_PARAMS
 from opspilot.models.walk_forward import (
     MODELS,
     band_check,
     band_cutoffs,
+    fit_recipe,
+    fit_rows,
     level_rows,
     level_shift,
     monthly_ranking,
@@ -93,9 +94,9 @@ def test_band_cutoffs_mark_the_top_10_and_next_20_percent():
     assert (scores >= cutoffs["medium"]).mean() == pytest.approx(0.3, abs=0.002)
 
 
-def test_band_check_uses_only_earlier_months(predictions):
-    table = band_check(predictions)
-    assert str(months()[0]) not in set(table.month)
+def test_band_check_covers_the_months_with_recent_orders(features):
+    table = band_check(features, DEFAULT_PARAMS)
+    assert len(table) > 0
     assert table["share high"].between(0, 1).all()
 
 
