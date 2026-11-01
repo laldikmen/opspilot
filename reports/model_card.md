@@ -116,6 +116,13 @@ orders risk correctly within test (see the calibration figure in
   attention, and the model would keep reinforcing where attention goes. Slices
   under 200 orders are flagged as unreliable in [evaluation.md](evaluation.md).
 
+## v1.1
+
+This card describes the frozen v1 model. v1.1 serves a different recipe: logistic
+regression and XGBoost averaged, retrained monthly, no calibrator, plus a second
+prediction at carrier handover. Its numbers are not a clean test, because the test
+months had already been seen. See [ADR 0007](../docs/decisions/0007-v1-1-recipe.md).
+
 ## Reproduce
 
 `make all` rebuilds the data, warehouse, features, model and this evaluation

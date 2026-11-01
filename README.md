@@ -44,6 +44,32 @@ Full details: [evaluation](reports/evaluation.md),
 [how the model was chosen](reports/model_selection.md),
 [error analysis](notebooks/02_error_analysis.ipynb).
 
+## What v1.1 adds
+
+v1 is frozen; the results above are its one test. v1.1 acts on what that test showed,
+and its numbers are **not a clean test**: April to July 2018 had already been seen,
+and the data ends there. Models are compared month by month, July 2017 to July 2018,
+each retrained on outcomes known on the month's first day
+([ADR 0007](docs/decisions/0007-v1-1-recipe.md)).
+
+| Late orders caught in the riskiest 10% | Share |
+| --- | ---: |
+| Logistic regression | 26.1% |
+| XGBoost | 27.8% |
+| Average of both (served at approval) | 27.6% |
+
+- **Neither model clearly wins once both are retrained.** The average has the best
+  lift and ROC-AUC, so that is what the API serves.
+- **A second prediction at carrier handover** catches 36.5% of late orders against
+  28.2% at approval, on the same 71,827 orders, in all 13 months. A typical flagged
+  order still has about two weeks left.
+- **No calibrator.** A fix for v1's calibration flaw did not work: it always follows
+  the recent past. Retraining alone cut the average prediction for April to July from
+  17% to about 10%, against 4% actual. Percentages stay unreliable, so use the risk band.
+
+Full reports: [month by month](reports/v1.1/walk_forward.md),
+[handover](reports/v1.1/handover.md).
+
 ## Calibration under prevalence shift
 
 The late rate moves a lot: 13% on validation, 4% on test, and between 1% and 19%
@@ -87,8 +113,8 @@ results has a short record with its numbers
 
 - **Probabilities need recalibrating** on recent outcomes before their level can be
   trusted; use the ranking or risk band until then.
-- **What happens after approval is invisible.** Many late orders come from a seller
-  handing over weeks late or from a long carrier leg.
+- **Delays after the last prediction are invisible.** Handover catches slow sellers;
+  a long carrier leg stays unpredictable without tracking data.
 - **Batch scoring, not a live service.** The API looks up features built in the
   warehouse, or takes them from the caller. A live system would compute history
   features at request time.
@@ -115,7 +141,11 @@ on the small committed sample, without downloading anything:
 make test
 ```
 
-Then serve the model:
+Then build the v1.1 models and serve them:
+
+```bash
+make v1.1
+```
 
 ```bash
 docker compose up --build
@@ -126,16 +156,15 @@ curl -X POST localhost:8000/predict -H 'content-type: application/json' -d '{"or
 ```
 
 The response has the probability, a risk band, the model version and the top three
-reasons. API docs are at <http://localhost:8000/docs> and the MLflow UI at
-<http://localhost:5001>. The risk bands were set on validation; on test they ran
-1.8% (low), 6.0% (medium) and 12.0% (high) late.
+reasons. Add `"stage": "handover"` for the second prediction, once the seller has
+shipped. API docs are at <http://localhost:8000/docs> and the MLflow UI at
+<http://localhost:5001>. `make retrain ARGS="--as-of 2018-07-01"` refits as of a date.
 
 ## Roadmap for v2
 
-- Monthly retraining, orchestrated with Airflow.
+- Monthly retraining run automatically with Airflow.
 - Monitoring predicted against observed late rate from the prediction log, with
   recalibration when they drift, and a CI evaluation gate.
-- Re-scoring each order at carrier handover, when seller delays become visible.
 - History features computed at request time, deployed with Terraform on ECS.
 - An agent layer for operations teams.
 
