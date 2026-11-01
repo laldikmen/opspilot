@@ -6,6 +6,7 @@ strategies are compared with a backtest, and the result is saved as one bundle.
 The test set is not touched here.
 """
 
+import argparse
 import json
 
 import joblib
@@ -138,6 +139,10 @@ def final_calibrators(predictions: dict[str, pd.DataFrame]) -> dict:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--trials", type=int, default=N_TRIALS, help="XGBoost candidates to try")
+    args = parser.parse_args()
+
     features = load_features()
     start_experiment()
     commit = git_commit()
@@ -146,8 +151,8 @@ def main() -> None:
     trials = []
     with mlflow.start_run(run_name="xgboost_search"):
         mlflow.set_tags(tags)
-        mlflow.log_params({"n_trials": N_TRIALS, "search_space": json.dumps(list(SEARCH_SPACE))})
-        for i, params in enumerate(candidates(N_TRIALS)):
+        mlflow.log_params({"n_trials": args.trials, "search_space": json.dumps(list(SEARCH_SPACE))})
+        for i, params in enumerate(candidates(args.trials)):
             trial = evaluate_candidate(features, params)
             with mlflow.start_run(run_name=f"trial_{i:02d}", nested=True):
                 mlflow.set_tags(tags)

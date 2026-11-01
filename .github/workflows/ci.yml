@@ -21,3 +21,14 @@ jobs:
       - run: make dbt DBT_TARGET=ci
       - run: make features DBT_TARGET=ci
       - run: uv run pytest
+      # The whole pipeline end to end on the sample, with a tiny search. CI writes
+      # to its own throwaway checkout; validation stands in for the test set.
+      - name: Pipeline smoke test
+        env:
+          OPSPILOT_DUCKDB_PATH: warehouse/opspilot_ci.duckdb
+        run: |
+          uv run python -m opspilot.models.baselines
+          uv run python -m opspilot.models.train --trials 2
+          uv run python -m opspilot.models.evaluate --split validation
+      - name: API image builds
+        run: docker build -f docker/api.Dockerfile -t opspilot-api .
