@@ -67,7 +67,11 @@ switched after seeing this: choosing between models on the test set would leave
 no honest estimate for the one chosen. The likeliest reason is that the deeper
 interactions XGBoost learned were tied to 2017 and early 2018. Retrained each
 month on everything known so far, XGBoost catches 31% to 37% of late orders in
-the riskiest 10% instead of 22% to 34%, level with logistic regression.
+the riskiest 10% instead of 22% to 34%. Logistic regression was not retrained
+in that check, so this shows retraining helps XGBoost, not that it catches up.
+XGBoost stays the served model because that is what was committed to before
+scoring. Validation favoured it and test did not, and no later data exists to
+settle which period the future would resemble.
 
 **Calibration.** The probabilities run about four times too high on test: a mean prediction of 17.2% against a 4.05% late rate, an ECE of 0.131,
 and a worse Brier score than predicting the train late rate for everyone. This

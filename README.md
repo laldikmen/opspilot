@@ -20,7 +20,8 @@ after the model and the evaluation plan were committed in
   (PR-AUC 0.094 against a random 0.041).
 - **Logistic regression did better on test** (PR-AUC 0.116, 35.3% of late
   orders in the riskiest 10%), although XGBoost had led on validation. The model
-  was not switched after seeing this; retraining XGBoost monthly closes the gap.
+  was not switched after seeing this, and it remains the served model. Retraining
+  XGBoost monthly improved it in every test month.
 - **Calibration drifted.** Probabilities fitted on periods running up to 13%
   late came out about four times too high in a 4% period. Ranking held; the
   level did not.
