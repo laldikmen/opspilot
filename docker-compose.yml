@@ -1,4 +1,4 @@
-# Run `make features train` first: the API serves artifacts/ and the warehouse.
+# Run `make features train retrain` first: the API serves artifacts/ and the warehouse.
 services:
   api:
     build:

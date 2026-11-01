@@ -215,6 +215,46 @@ def calibration_summary(predictions: pd.DataFrame, models: list[str]) -> pd.Data
     return pd.DataFrame(rows)
 
 
+def band_cutoffs(scores: np.ndarray) -> dict[str, float]:
+    """High is the top 10% of recent scores, medium the next 20%."""
+    return {"high": float(np.quantile(scores, 0.9)), "medium": float(np.quantile(scores, 0.7))}
+
+
+def recent_scores(history: pd.DataFrame, start: pd.Timestamp) -> np.ndarray:
+    """Scores from the 90 days before `start`. They need no outcomes, so they do not lag."""
+    dates = pd.to_datetime(history.purchase_date)
+    return history.p[
+        dates.between(start - pd.Timedelta(days=90), start, inclusive="left")
+    ].to_numpy()
+
+
+def band_check(predictions: pd.DataFrame, model: str = "average") -> pd.DataFrame:
+    """Cut-offs from the 90 days before each month, applied to that month."""
+    rows = predictions[predictions.model == model]
+    table = []
+    for month, part in rows.groupby("month", sort=True):
+        start = pd.Period(month, freq="M").start_time
+        earlier = recent_scores(rows[rows.month < month], start)
+        if len(earlier) < MIN_LEVEL_ROWS:
+            continue
+        cutoffs = band_cutoffs(earlier)
+        high, medium = part.p >= cutoffs["high"], part.p >= cutoffs["medium"]
+        table.append(
+            {
+                "month": month,
+                "late rate": part.y.mean(),
+                "share high": high.mean(),
+                "late in high": part.y[high].mean() if high.any() else np.nan,
+                "share medium": (medium & ~high).mean(),
+                "late in medium": part.y[medium & ~high].mean()
+                if (medium & ~high).any()
+                else np.nan,
+                "late in low": part.y[~medium].mean(),
+            }
+        )
+    return pd.DataFrame(table)
+
+
 def level_by_month(predictions: pd.DataFrame, model: str) -> pd.DataFrame:
     part = predictions[predictions.model == model]
     return part.groupby("month").agg(
@@ -317,6 +357,11 @@ def write_report(predictions: pd.DataFrame) -> None:
         ),
         "![Level by month](figures/level_by_month.png)",
         markdown_table(levels.rename_axis("month"), digits=3),
+        "## Risk bands",
+        "The served recipe is the average of both models, retrained monthly, with no "
+        "calibrator. Its bands rank each month against the scores of the 90 days before it: "
+        "high is their top 10%, medium the next 20%.",
+        markdown_table(band_check(predictions)),
     ]
     (OUT_DIR / "walk_forward.md").write_text("\n\n".join(sections) + "\n")
 

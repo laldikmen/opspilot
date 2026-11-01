@@ -12,9 +12,8 @@ from opspilot.features.load import CATEGORICAL_FEATURES, MART, NUMERIC_FEATURES
 from opspilot.models.bundle import load_bundle, predict_proba
 from opspilot.models.explain import contributions, top_reasons
 
-# The top 10% and the next 20% of final-model scores on validation, where they ran
-# 37% and 19% late. Fixed there, not on test. Calibration drifts between periods
-# (docs/decisions/0006), so the share of orders in each band moves with it.
+# Fallback cut-offs for a bundle without its own: the v1 model's top 10% and next
+# 20% of scores on validation. The v1.1 bundle carries cut-offs from recent scores.
 HIGH_RISK = 0.30
 MEDIUM_RISK = 0.17
 
@@ -23,10 +22,10 @@ class OrderNotFound(LookupError):
     pass
 
 
-def risk_band(probability: float) -> str:
-    if probability >= HIGH_RISK:
+def risk_band(probability: float, high: float = HIGH_RISK, medium: float = MEDIUM_RISK) -> str:
+    if probability >= high:
         return "high"
-    return "medium" if probability >= MEDIUM_RISK else "low"
+    return "medium" if probability >= medium else "low"
 
 
 def _normalized(rows: pd.DataFrame) -> pd.DataFrame:
@@ -42,6 +41,7 @@ class Predictor:
     def __init__(self, bundle_path: Path, db_path: Path, log_path: Path):
         self.bundle = load_bundle(bundle_path)
         self.version = self.bundle["version"]
+        self.cutoffs = self.bundle.get("risk_bands", {"high": HIGH_RISK, "medium": MEDIUM_RISK})
         self.db_path = db_path
         self.log = PredictionLog(log_path)
 
@@ -76,7 +76,7 @@ class Predictor:
         return PredictResponse(
             order_id=request.order_id,
             probability=probability,
-            risk_band=risk_band(probability),
+            risk_band=risk_band(probability, **self.cutoffs),
             model_version=self.version,
             reasons=top_reasons(self.bundle, row)[0],
         )

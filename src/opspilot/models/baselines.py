@@ -9,7 +9,7 @@ import mlflow
 import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
-from sklearn.pipeline import make_pipeline
+from sklearn.pipeline import Pipeline, make_pipeline
 
 from opspilot.config import FOLD_STARTS, RANDOM_SEED, SPLITS
 from opspilot.features.load import FEATURES, TARGET, load_features
@@ -42,16 +42,21 @@ def route_rate_rule(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
     return score["route_late_rate_smoothed"].fillna(fit[TARGET].mean()).to_numpy()
 
 
-def logistic_regression_on(features: list[str], half_life_days: float | None = None) -> FitPredict:
+def fit_logistic_regression(
+    fit: pd.DataFrame, features: list[str] = FEATURES, half_life_days: float | None = None
+) -> Pipeline:
     """Logistic regression with train-only preprocessing, on the given features."""
+    model = make_pipeline(
+        build_preprocessor(scale=True, features=features),
+        LogisticRegression(max_iter=2000, random_state=RANDOM_SEED),
+    )
+    weights = recency_weights(fit, half_life_days)
+    return model.fit(fit[features], fit[TARGET], logisticregression__sample_weight=weights)
 
+
+def logistic_regression_on(features: list[str], half_life_days: float | None = None) -> FitPredict:
     def fit_predict(fit: pd.DataFrame, score: pd.DataFrame) -> np.ndarray:
-        model = make_pipeline(
-            build_preprocessor(scale=True, features=features),
-            LogisticRegression(max_iter=2000, random_state=RANDOM_SEED),
-        )
-        weights = recency_weights(fit, half_life_days)
-        model.fit(fit[features], fit[TARGET], logisticregression__sample_weight=weights)
+        model = fit_logistic_regression(fit, features, half_life_days)
         return model.predict_proba(score[features])[:, 1]
 
     return fit_predict

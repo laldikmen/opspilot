@@ -14,11 +14,11 @@ from opspilot.api.schemas import (
     PredictResponse,
 )
 from opspilot.api.service import OrderNotFound, Predictor
-from opspilot.config import BUNDLE_PATH, DUCKDB_PATH, PREDICTION_LOG_PATH
+from opspilot.config import DUCKDB_PATH, PREDICTION_LOG_PATH, SERVED_BUNDLE_PATH
 
 
 def create_app(
-    bundle_path: Path = BUNDLE_PATH,
+    bundle_path: Path = SERVED_BUNDLE_PATH,
     db_path: Path = DUCKDB_PATH,
     log_path: Path = PREDICTION_LOG_PATH,
 ) -> FastAPI:

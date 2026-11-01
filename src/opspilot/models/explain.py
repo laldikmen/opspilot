@@ -11,6 +11,7 @@ import pandas as pd
 import xgboost as xgb
 
 from opspilot.features.load import CATEGORICAL_FEATURES
+from opspilot.models.ensemble import AveragedModel
 
 
 def source_feature(column: str, features: list[str]) -> str:
@@ -20,16 +21,38 @@ def source_feature(column: str, features: list[str]) -> str:
     return max((f for f in CATEGORICAL_FEATURES if column.startswith(f"{f}_")), key=len)
 
 
-def contributions(bundle: dict, rows: pd.DataFrame) -> pd.DataFrame:
-    """Log-odds contribution of each input feature for each row, plus the model's base value."""
-    preprocessor, model = bundle["model"][0], bundle["model"][-1]
-    features = bundle["features"]
+def _by_feature(values: pd.DataFrame, features: list[str]) -> pd.DataFrame:
+    groups = [source_feature(column, features) for column in values.columns]
+    return values.T.groupby(groups).sum().T[features]
+
+
+def _tree_contributions(pipeline, features: list[str], rows: pd.DataFrame) -> pd.DataFrame:
+    preprocessor, model = pipeline[0], pipeline[-1]
     encoded = preprocessor.transform(rows[features])
     values = model.get_booster().predict(xgb.DMatrix(encoded), pred_contribs=True)
     per_column = pd.DataFrame(values[:, :-1], columns=encoded.columns, index=rows.index)
-    groups = [source_feature(column, features) for column in encoded.columns]
-    by_feature = per_column.T.groupby(groups).sum().T[features]
-    return by_feature.assign(base=values[:, -1])
+    return _by_feature(per_column, features).assign(base=values[:, -1])
+
+
+def _linear_contributions(
+    pipeline, reference: pd.Series, features: list[str], rows: pd.DataFrame
+) -> pd.DataFrame:
+    """Coefficient times distance from the fitted rows' mean: SHAP for a linear model."""
+    preprocessor, model = pipeline[0], pipeline[-1]
+    encoded = preprocessor.transform(rows[features])
+    per_column = (encoded - reference) * model.coef_[0]
+    base = float(model.intercept_[0] + (reference.to_numpy() * model.coef_[0]).sum())
+    return _by_feature(per_column, features).assign(base=base)
+
+
+def contributions(bundle: dict, rows: pd.DataFrame) -> pd.DataFrame:
+    """Log-odds contribution of each input feature for each row, plus the model's base value."""
+    model, features = bundle["model"], bundle["features"]
+    if isinstance(model, AveragedModel):
+        tree = _tree_contributions(model.xgboost, features, rows)
+        linear = _linear_contributions(model.logistic, model.reference, features, rows)
+        return (tree + linear) / 2
+    return _tree_contributions(model, features, rows)
 
 
 def _plain(value):

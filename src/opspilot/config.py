@@ -48,7 +48,11 @@ FOLD_STARTS = [date(2017, 7, 1), date(2017, 9, 1), date(2017, 11, 1)]
 
 # Trained models; gitignored, rebuilt by `make train`.
 ARTIFACTS_DIR = REPO_ROOT / "artifacts"
-BUNDLE_PATH = ARTIFACTS_DIR / "model_bundle.joblib"
+BUNDLE_PATH = ARTIFACTS_DIR / "model_bundle.joblib"  # the frozen v1 model
+# What the API serves: the v1.1 recipe, rebuilt by `make retrain`.
+SERVED_BUNDLE_PATH = Path(
+    os.environ.get("OPSPILOT_BUNDLE_PATH", ARTIFACTS_DIR / "v1.1" / "model_bundle.joblib")
+)
 
 # Every prediction the API serves is appended here.
 PREDICTION_LOG_PATH = Path(
