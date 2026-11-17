@@ -4,7 +4,8 @@ Predicts which e-commerce orders will arrive late, using only what was known
 when the order was approved, and serves the prediction with its reasons from a
 Dockerized API.
 
-Built with an AI coding assistant.
+Built with an AI coding assistant. I directed the problem framing, evaluation protocol and
+decisions, and can explain every component.
 
 ![Share of late orders caught by how many orders a team checks](reports/figures/capacity.png)
 
