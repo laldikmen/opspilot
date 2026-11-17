@@ -4,6 +4,8 @@ Predicts which e-commerce orders will arrive late, using only what was known
 when the order was approved, and serves the prediction with its reasons from a
 Dockerized API.
 
+Built with an AI coding assistant.
+
 ![Share of late orders caught by how many orders a team checks](reports/figures/capacity.png)
 
 ## The problem
@@ -64,8 +66,9 @@ each retrained on outcomes known on the month's first day
   28.2% at approval, on the same 71,827 orders, in all 13 months. A typical flagged
   order still has about 18 days left.
 - **No calibrator.** A fix for v1's calibration flaw did not work: it always follows
-  the recent past. Retraining alone cut the average prediction for April to July from
-  17% to about 10%, against 4% actual. Percentages stay unreliable, so use the risk band.
+  the recent past. Dropping the calibrator is what brings April to July down from 17%:
+  the v1 model without it already gave 9.2%, and monthly retraining stays around 10%,
+  against 4% actual. Percentages stay unreliable, so use the risk band.
 
 Full reports: [month by month](reports/v1.1/walk_forward.md),
 [handover](reports/v1.1/handover.md).
@@ -160,13 +163,10 @@ reasons. Add `"stage": "handover"` for the second prediction, once the seller ha
 shipped. API docs are at <http://localhost:8000/docs> and the MLflow UI at
 <http://localhost:5001>. `make retrain ARGS="--as-of 2018-07-01"` refits as of a date.
 
-## Roadmap for v2
+## Next
 
-- Monthly retraining run automatically with Airflow.
-- Monitoring predicted against observed late rate from the prediction log, with
-  recalibration when they drift, and a CI evaluation gate.
-- History features computed at request time, deployed with Terraform on ECS.
-- An agent layer for operations teams.
+Monitoring predicted against actual late rates from the prediction log, and scoring
+brand-new orders with history features computed at request time.
 
 ## License
 

@@ -29,10 +29,11 @@ month's first day. See [walk_forward.md](../../reports/v1.1/walk_forward.md) and
    work. It helps while late rates rise (mean monthly gap 4.4 points against 5.5
    before April 2018) and hurts when they fall (11.0 against 5.9 after), landing on
    the same 17% average as v1 on April to July, because it always follows the recent
-   past. Choosing on the months before April would have picked it. Retraining without
-   a calibrator gives about 10% on those months, still about twice the true 4.05%,
-   and it under-predicts spikes badly. Past outcomes alone cannot give next month's
-   late rate.
+   past. Choosing on the months before April would have picked it. Without a
+   calibrator, retrained models give about 10% on those months, still about twice the
+   true 4.05%, and they under-predict spikes badly. The drop from 17% comes from
+   removing the calibrator, not from retraining: the v1 model without it already gave
+   9.2%. Past outcomes alone cannot give next month's late rate.
 4. **Risk bands by rank.** On its first day each model scores the previous 90 days of
    orders; high is their top 10%, medium the next 20%. This needs no outcomes. The
    bands stay ordered in every month, though the share of high orders still moves
